@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subtitle Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ---------- tokens ---------- */
+:root{
+  color-scheme:dark;
+  --bg:#0e1015; --panel:#161920; --field:#1d212a; --field-hover:#252a36; --field-press:#2c3240;
+  --border:#2b303c; --border-strong:#434a5c;
+  --text:#eceef3; --muted:#a6acba;                 /* muted ≈ 7:1 on panel */
+  --accent:#7b6cff; --accent-strong:#6a5af9; --accent-hover:#7768ff; --accent-press:#5847e6;
+  --accent-ink:#bdb5ff; --accent-soft:rgba(123,108,255,.15);
+  --ok:#4fd69c; --err:#ff8a8a; --err-soft:rgba(255,138,138,.1); --focus:#b0a7ff;
+  --overlay:rgba(0,0,0,.75); --mark:rgba(255,204,77,.35);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+  --r-card:12px; --r-ctl:10px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    color-scheme:light;
+    --bg:#f4f5f9; --panel:#ffffff; --field:#f3f4f8; --field-hover:#eaecf2; --field-press:#e0e3eb;
+    --border:#dde0e8; --border-strong:#b9bfcc;
+    --text:#161821; --muted:#555b6b;
+    --accent:#5443e8; --accent-strong:#5443e8; --accent-hover:#4a39dd; --accent-press:#3f2fc7;
+    --accent-ink:#4332d4; --accent-soft:#efedff;
+    --ok:#0d8050; --err:#c62828; --err-soft:#fdecec; --focus:#5443e8;
+    --mark:rgba(255,196,0,.4);
+    --shadow:0 1px 2px rgba(20,20,40,.05),0 8px 24px rgba(20,20,40,.06);
+  }
+}
+
+/* ---------- base ---------- */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+svg{flex:none}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.page{max-width:1280px;margin:0 auto;padding:var(--s6)}
+header{margin-bottom:var(--s6);display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s4);flex-wrap:wrap}
+header h1{margin:0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-.02em}
+header p{margin:var(--s1) 0 0;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:var(--s2);padding:var(--s1) var(--s3);border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:13px}
+
+main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:var(--s6);align-items:start}
+@media (max-width:1023px){main{grid-template-columns:1fr}}
+@media (max-width:600px){.page{padding:var(--s4)}}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-card);box-shadow:var(--shadow)}
+.label{margin:0 0 var(--s3);font-size:12px;line-height:16px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.hint{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-height:40px;padding:var(--s2) var(--s4);border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--field);font-weight:600;font-size:15px;cursor:pointer;transition:background .12s,border-color .12s,transform .06s;white-space:nowrap}
+.btn:hover{background:var(--field-hover);border-color:var(--border-strong)}
+.btn:active{background:var(--field-press);transform:translateY(1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;background:var(--field);border-color:var(--border)}
+.btn.sm{min-height:32px;padding:var(--s1) var(--s3);font-size:13px}
+.btn.primary{background:var(--accent-strong);border-color:transparent;color:#fff}
+.btn.primary:hover{background:var(--accent-hover)}
+.btn.primary:active{background:var(--accent-press)}
+.btn.primary:disabled{background:var(--accent-strong)}
+.btn.danger:hover{color:var(--err);border-color:var(--err)}
+.btn.block{width:100%;min-height:48px;font-size:16px}
+.icon-btn{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:var(--r-ctl);border:0;background:transparent;color:var(--muted);cursor:pointer}
+.icon-btn:hover{background:var(--field-hover);color:var(--text)}
+.icon-btn:active{background:var(--field-press)}
+
+/* ---------- settings panel ---------- */
+.settings{position:sticky;top:var(--s6);max-height:calc(100vh - 2 * var(--s6));overflow:auto;display:flex;flex-direction:column}
+@media (max-width:1023px){.settings{position:static;max-height:none;overflow:visible}}
+.settings fieldset{border:0;margin:0;padding:var(--s5);min-width:0;display:flex;flex-direction:column;gap:var(--s6)}
+.settings fieldset:disabled{opacity:.6}
+.settings fieldset:disabled label,.settings fieldset:disabled .btn{cursor:not-allowed}
+.foot{position:sticky;bottom:0;margin-top:auto;padding:var(--s4) var(--s5) var(--s5);background:var(--panel);border-top:1px solid var(--border);border-radius:0 0 var(--r-card) var(--r-card);display:flex;flex-direction:column;gap:var(--s3)}
+.foot .hint{text-align:center}
+
+/* dropzone */
+#file{position:absolute;opacity:0;width:1px;height:1px}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s2);min-height:160px;padding:var(--s5);border:2px dashed var(--border-strong);border-radius:var(--r-card);background:var(--field);text-align:center;cursor:pointer;transition:background .12s,border-color .12s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+#file:focus-visible + .drop{outline:2px solid var(--focus);outline-offset:2px}
+.drop .ico{display:grid;place-items:center;width:48px;height:48px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);margin-bottom:var(--s1)}
+.drop strong{font-weight:600}
+.loaded{display:flex;flex-direction:column;gap:var(--s4);padding:var(--s4);border:1px solid var(--border);border-radius:var(--r-card);background:var(--field)}
+.loaded.over{border-color:var(--accent);background:var(--accent-soft)}
+.file-row{display:flex;align-items:center;gap:var(--s3);min-width:0}
+.file-ico{display:grid;place-items:center;width:40px;height:40px;border-radius:var(--r-ctl);background:var(--accent-soft);color:var(--accent-ink)}
+.file-info{min-width:0;flex:1}
+.fname{display:flex;min-width:0;font-weight:600}
+.fname-start{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.fname-end{white-space:nowrap}
+.file-meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.file-actions{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2)}
+
+/* option tiles */
+.tiles{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:var(--s3)}
+.tile{position:relative}
+.tile input{position:absolute;opacity:0;inset:0;margin:0}
+.tile label{display:flex;flex-direction:column;justify-content:center;gap:var(--s1);height:100%;min-height:72px;padding:var(--s3) var(--s4);padding-right:var(--s6);border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--field);cursor:pointer;transition:background .12s,border-color .12s}
+.tile label:hover{border-color:var(--border-strong);background:var(--field-hover)}
+.tile label:active{background:var(--field-press)}
+.tile b{font-weight:600;line-height:1.3}
+.tile span{font-size:13px;color:var(--muted);line-height:1.4}
+.tile .check{position:absolute;top:var(--s2);right:var(--s2);display:none;place-items:center;width:20px;height:20px;border-radius:999px;background:var(--accent-strong);color:#fff}
+.tile input:checked + label{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.tile input:checked + label .check{display:grid}
+.tile input:focus-visible + label{outline:2px solid var(--focus);outline-offset:2px}
+
+.sub-field{margin-top:var(--s4);display:flex;flex-direction:column;gap:var(--s2)}
+.sub-field label{font-size:13px;color:var(--muted);font-weight:500}
+select{width:100%;min-height:40px;padding:var(--s2) var(--s3);background:var(--field);border:1px solid var(--border);border-radius:var(--r-ctl);cursor:pointer}
+select:hover{border-color:var(--border-strong)}
+
+/* slider */
+.slider-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:var(--s2)}
+.slider-head output{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;margin:0;accent-color:var(--accent);cursor:pointer}
+.range-ends{display:flex;justify-content:space-between;margin-top:var(--s1);font-size:13px;color:var(--muted)}
+.preview{margin-top:var(--s3);padding:var(--s4);border-radius:var(--r-ctl);background:#000;display:flex;flex-direction:column;align-items:center;gap:var(--s2);text-align:center}
+.preview .line{display:inline-block;padding:var(--s1) var(--s3);border-radius:8px;background:rgba(255,255,255,.12);color:#fff;font-weight:600;font-size:15px}
+.preview .next{font-size:13px;color:#b8bcc8}
+
+/* progress block */
+.run{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s4);border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--field)}
+.run-head{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s3);font-weight:600}
+.run-head .pct{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:500}
+.bar{height:8px;border-radius:999px;background:var(--border);overflow:hidden}
+.bar>div{height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .4s}
+.bar.indeterminate>div{width:30%!important;animation:slide 1.2s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+@media (prefers-reduced-motion:reduce){.bar.indeterminate>div{animation:none;width:100%!important;opacity:.5}}
+.run-foot{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---------- results panel ---------- */
+.results{padding:var(--s5);min-height:480px;container-type:inline-size}
+.empty{min-height:432px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s3);text-align:center;color:var(--muted)}
+.empty .ico{display:grid;place-items:center;width:56px;height:56px;border-radius:999px;background:var(--field);color:var(--muted)}
+.empty p{margin:0}
+.empty .title{color:var(--text);font-weight:600;font-size:16px}
+
+.workspace{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s5)}
+.workspace > .span{grid-column:1/-1}
+@container (min-width:720px){
+  .workspace.portrait{grid-template-columns:auto minmax(0,1fr)}
+  .workspace.portrait .subs{height:60vh;min-height:420px}
+  .workspace.portrait .cues{max-height:none}
+}
+
+.player{position:relative;margin:0 auto;width:calc(60vh * var(--ar,1.7778));max-width:100%;aspect-ratio:var(--ar,16/9);background:#000;border-radius:var(--r-card);overflow:hidden;container-type:inline-size}
+.player video{display:block;width:100%;height:100%;object-fit:contain;background:#000}
+.player.audio{width:100%;aspect-ratio:auto;padding-top:calc(2 * var(--s7))}
+.player.audio video{height:56px}
+.overlay{position:absolute;left:0;right:0;bottom:calc(var(--s7) + var(--s5));display:flex;justify-content:center;padding:0 var(--s4);pointer-events:none}
+.player.audio .overlay{top:var(--s5);bottom:auto}
+.overlay span{max-width:90%;padding:var(--s1) var(--s3);border-radius:8px;background:var(--overlay);color:#fff;font-weight:600;font-size:clamp(15px,5cqw,28px);line-height:1.35;text-align:center;text-wrap:balance}
+.overlay span:empty{display:none}
+
+.subs{display:flex;flex-direction:column;gap:var(--s3);min-width:0;min-height:0;container:subs/inline-size}
+.list-empty{flex:1;min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s2);padding:var(--s5);border:1px dashed var(--border-strong);border-radius:var(--r-card);color:var(--muted);text-align:center}
+.list-empty .title{color:var(--text);font-weight:600}
+
+.alert{display:flex;gap:var(--s3);align-items:flex-start;padding:var(--s3) var(--s4);border:1px solid var(--err);border-radius:var(--r-ctl);background:var(--err-soft);color:var(--err);font-weight:500}
+
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3)}
+.status{margin-right:auto;display:flex;align-items:center;gap:var(--s2);color:var(--muted)}
+.status svg{color:var(--ok)}
+.status b{color:var(--text);font-weight:600}
+.menu-wrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + var(--s1));z-index:20;min-width:200px;margin:0;padding:var(--s1);list-style:none;background:var(--panel);border:1px solid var(--border-strong);border-radius:var(--r-ctl);box-shadow:var(--shadow)}
+.menu button{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);width:100%;min-height:40px;padding:var(--s2) var(--s3);border:0;border-radius:8px;background:transparent;cursor:pointer;text-align:left}
+.menu button:hover,.menu button:focus-visible{background:var(--field-hover)}
+.menu button:active{background:var(--field-press)}
+.menu small{color:var(--muted);font-size:13px}
+
+.findbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:var(--s2)}
+@container subs (max-width:520px){.findbar{grid-template-columns:1fr 1fr}.findbar .btn{grid-column:1/-1}}
+.field{position:relative}
+.field svg{position:absolute;left:var(--s3);top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.field input{width:100%;min-height:40px;padding:var(--s2) var(--s3) var(--s2) calc(var(--s3) + 16px + var(--s2));background:var(--field);border:1px solid var(--border);border-radius:var(--r-ctl)}
+.field input::placeholder{color:var(--muted)}
+.field input:hover{border-color:var(--border-strong)}
+.field input:focus{border-color:var(--accent)}
+.opts{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s4);font-size:13px;color:var(--muted)}
+.opts label{display:inline-flex;align-items:center;gap:var(--s2);cursor:pointer}
+.opts input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.opts .count{margin-left:auto;font-variant-numeric:tabular-nums}
+.switch{display:inline-flex;align-items:center;gap:var(--s2);padding:var(--s1) var(--s2);border:0;border-radius:8px;background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
+.switch:hover{background:var(--field-hover);color:var(--text)}
+.switch:active{background:var(--field-press)}
+.switch .track{position:relative;width:32px;height:20px;border-radius:999px;background:var(--border-strong);transition:background .12s}
+.switch .track::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:#fff;transition:transform .12s}
+.switch[aria-checked=true] .track{background:var(--accent-strong)}
+.switch[aria-checked=true] .track::after{transform:translateX(12px)}
+
+.cues{position:relative;flex:1;min-height:0;max-height:min(560px,70vh);overflow:auto;border:1px solid var(--border);border-radius:var(--r-card);overscroll-behavior:contain}
+.cue{display:grid;grid-template-columns:104px minmax(0,1fr) 32px;align-items:center;gap:var(--s3);min-height:44px;padding:var(--s1) var(--s4);border-bottom:1px solid var(--border);transition:background .12s}
+.cue:last-child{border-bottom:0}
+.cue:hover{background:var(--field)}
+.cue.current{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.ts{justify-self:start;padding:var(--s1) var(--s2);margin-left:calc(-1 * var(--s2));border:0;border-radius:6px;background:transparent;color:var(--accent-ink);font:500 13px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer}
+.ts:hover{background:var(--accent-soft)}
+.ts:active{background:var(--field-press)}
+.txt{display:flex;align-items:center;gap:var(--s2);min-width:0;cursor:text}
+.txt .text{overflow-wrap:anywhere;line-height:1.45}
+.txt mark{background:var(--mark);color:inherit;border-radius:4px}
+.dot{width:8px;height:8px;border-radius:999px;background:var(--accent);flex:none}
+.cue .icon-btn{opacity:0}
+.cue:hover .icon-btn,.cue:focus-within .icon-btn,.cue .icon-btn:focus-visible{opacity:1}
+@media (hover:none){.cue .icon-btn{opacity:1}}
+.txt input{width:100%;min-height:32px;padding:var(--s1) var(--s2);margin-left:calc(-1 * var(--s2));background:var(--panel);border:1px solid var(--accent);border-radius:6px;outline:none}
+.no-match{padding:var(--s5);text-align:center;color:var(--muted)}
+
+.keys{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);font-size:13px;color:var(--muted)}
+kbd{display:inline-block;min-width:24px;padding:0 var(--s1);border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:6px;font:500 13px var(--mono);text-align:center;color:var(--text)}
+
+/* toast */
+.toasts{position:fixed;left:50%;bottom:var(--s5);transform:translateX(-50%);z-index:50;display:flex;flex-direction:column;align-items:center;gap:var(--s2);pointer-events:none}
+.toast{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-ctl);background:var(--text);color:var(--bg);font-weight:500;box-shadow:var(--shadow);pointer-events:auto;animation:pop .16s ease-out}
+.toast button{padding:var(--s1) var(--s2);border:0;border-radius:6px;background:transparent;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+.toast button:hover{background:rgba(127,127,127,.2)}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-replace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h13l-3-3M20 17H7l3 3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+</svg>
+
+<div class="page">
+<header>
+  <div>
+    <h1>Subtitle Generator</h1>
+    <p>Whisper on this Mac's GPU. Your files never leave your computer.</p>
+  </div>
+  <span class="badge"><svg width="16" height="16"><use href="#i-lock"/></svg>Runs locally</span>
+</header>
+
+<main>
+  <!-- ================= settings ================= -->
+  <form class="card settings" id="form" novalidate>
+    <fieldset id="settings">
+      <section>
+        <h2 class="label" id="l-file">1 · Video or audio</h2>
+        <input type="file" id="file" name="file" accept="video/*,audio/*" aria-labelledby="l-file">
+        <label class="drop" id="drop" for="file">
+          <span class="ico"><svg width="24" height="24"><use href="#i-upload"/></svg></span>
+          <strong>Drop a video/audio file or click to browse</strong>
+          <span class="hint">MP4, MOV, MKV, WEBM, MP3, WAV, M4A</span>
+        </label>
+        <div class="loaded" id="loaded" hidden>
+          <div class="file-row">
+            <span class="file-ico"><svg width="20" height="20"><use href="#i-film"/></svg></span>
+            <div class="file-info">
+              <div class="fname" id="fname"><span class="fname-start" id="fnameStart"></span><span class="fname-end" id="fnameEnd"></span></div>
+              <div class="file-meta" id="fmeta"></div>
+            </div>
+          </div>
+          <div class="file-actions">
+            <button type="button" class="btn sm" id="changeBtn">Change</button>
+            <button type="button" class="btn sm danger" id="removeBtn">Remove</button>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="label" id="l-mode">2 · Subtitle language</h2>
+        <div class="tiles" role="radiogroup" aria-labelledby="l-mode">
+          <div class="tile"><input type="radio" name="mode" id="m-hinglish" value="hinglish" checked>
+            <label for="m-hinglish"><b>Hinglish</b><span>aap kaise hain</span><i class="check"><svg width="12" height="12"><use href="#i-check"/></svg></i></label></div>
+          <div class="tile"><input type="radio" name="mode" id="m-hindi" value="hindi">
+            <label for="m-hindi"><b>Hindi</b><span>आप कैसे हैं</span><i class="check"><svg width="12" height="12"><use href="#i-check"/></svg></i></label></div>
+          <div class="tile"><input type="radio" name="mode" id="m-english" value="english">
+            <label for="m-english"><b>English</b><span>how are you (translated)</span><i class="check"><svg width="12" height="12"><use href="#i-check"/></svg></i></label></div>
+          <div class="tile"><input type="radio" name="mode" id="m-original" value="original">
+            <label for="m-original"><b>Auto (same as audio)</b><span>whatever is spoken</span><i class="check"><svg width="12" height="12"><use href="#i-check"/></svg></i></label></div>
+        </div>
+        <div class="sub-field" id="spokenWrap">
+          <label for="spoken">Spoken language</label>
+          <select name="spoken" id="spoken">
+            <option value="auto">Detect automatically</option>
+            <option value="hi">Hindi</option><option value="en">English</option>
+            <option value="bn">Bengali</option><option value="mr">Marathi</option>
+            <option value="gu">Gujarati</option><option value="pa">Punjabi</option>
+            <option value="ta">Tamil</option><option value="te">Telugu</option>
+            <option value="kn">Kannada</option><option value="ml">Malayalam</option>
+            <option value="ur">Urdu</option><option value="ne">Nepali</option>
+            <option value="es">Spanish</option><option value="fr">French</option>
+            <option value="de">German</option><option value="ar">Arabic</option>
+          </select>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="label" id="l-words">3 · Words per subtitle</h2>
+        <div class="slider-head"><span class="hint">Fewer = punchier, Reels-style</span><output id="wordsOut" for="words">6</output></div>
+        <input type="range" name="words" id="words" min="1" max="12" value="6" aria-labelledby="l-words">
+        <div class="range-ends" aria-hidden="true"><span>1 word</span><span>12 words</span></div>
+        <div class="preview" aria-live="polite" aria-label="Preview of a subtitle at this length">
+          <span class="line" id="pvLine"></span>
+          <span class="next" id="pvNext"></span>
+        </div>
+      </section>
+    </fieldset>
+
+    <div class="foot">
+      <button class="btn primary block" id="goBtn" type="submit" disabled>Generate subtitles</button>
+      <div class="run" id="run" hidden>
+        <div class="run-head"><span id="runStage" aria-live="polite">Uploading…</span><span class="pct" id="runPct">0%</span></div>
+        <div class="bar" id="bar" role="progressbar" aria-labelledby="runStage" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="barFill"></div></div>
+        <div class="run-foot"><span id="elapsed">0:00 elapsed</span><button type="button" class="btn sm danger" id="cancelBtn">Cancel</button></div>
+      </div>
+      <p class="hint" id="footHint">Add a file to get started</p>
+    </div>
+  </form>
+
+  <!-- ================= results ================= -->
+  <section class="card results" aria-label="Results">
+    <div class="empty" id="emptyState">
+      <span class="ico"><svg width="24" height="24"><use href="#i-chat"/></svg></span>
+      <p class="title">Your subtitles will appear here.</p>
+      <p class="hint">Choose a file on the left, pick a language, then Generate.</p>
+    </div>
+
+    <div class="workspace" id="workspace" hidden>
+      <div class="alert span" id="errorBox" role="alert" hidden><svg width="20" height="20"><use href="#i-alert"/></svg><span id="errorText"></span></div>
+
+      <div class="toolbar span" id="toolbar" hidden>
+        <span class="status"><svg width="16" height="16"><use href="#i-check-circle"/></svg><span id="statusText"></span></span>
+        <div class="menu-wrap">
+          <button type="button" class="btn" id="dlBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="dlMenu">
+            <svg width="16" height="16"><use href="#i-download"/></svg>Download<svg width="16" height="16"><use href="#i-chev"/></svg>
+          </button>
+          <ul class="menu" id="dlMenu" role="menu" aria-labelledby="dlBtn" hidden>
+            <li role="none"><button type="button" role="menuitem" data-fmt="srt">SRT <small>Most editors</small></button></li>
+            <li role="none"><button type="button" role="menuitem" data-fmt="vtt">VTT <small>Web players</small></button></li>
+            <li role="none"><button type="button" role="menuitem" data-fmt="txt">TXT <small>Plain text</small></button></li>
+          </ul>
+        </div>
+        <button type="button" class="btn" id="copyBtn" title="Copy as SRT"><svg width="16" height="16"><use href="#i-copy"/></svg>Copy</button>
+      </div>
+
+      <div class="media" id="media">
+        <div class="player" id="player">
+          <video id="video" controls playsinline preload="metadata"></video>
+          <div class="overlay" aria-hidden="true"><span id="overlayText"></span></div>
+        </div>
+        <p class="hint" id="previewNote" hidden style="margin-top:var(--s3)">This format can't be previewed in the browser, but subtitles will still be generated.</p>
+      </div>
+
+      <div class="subs">
+        <div class="list-empty" id="pending">
+          <p class="title" style="margin:0" id="pendingTitle">Your subtitles will appear here.</p>
+          <p class="hint" id="pendingHint">Hit Generate when your settings look right.</p>
+        </div>
+
+        <div id="result" hidden style="display:contents">
+          <div class="findbar">
+            <div class="field"><svg width="16" height="16"><use href="#i-search"/></svg><input id="find" type="search" placeholder="Find" aria-label="Find in subtitles" autocomplete="off" spellcheck="false"></div>
+            <div class="field"><svg width="16" height="16"><use href="#i-replace"/></svg><input id="replace" type="text" placeholder="Replace with" aria-label="Replace with" autocomplete="off" spellcheck="false"></div>
+            <button type="button" class="btn" id="replaceBtn" disabled>Replace all</button>
+          </div>
+          <div class="opts">
+            <label><input type="checkbox" id="wholeWord" checked>Whole word</label>
+            <label><input type="checkbox" id="matchCase">Match case</label>
+            <span class="count" id="matchCount" aria-live="polite"></span>
+            <button type="button" class="switch" id="autoScroll" role="switch" aria-checked="true"><span class="track"></span>Auto-scroll</button>
+          </div>
+          <div class="cues" id="cues" role="list" aria-label="Subtitle lines"></div>
+          <div class="keys" aria-label="Keyboard shortcuts">
+            <span><kbd>Space</kbd> play / pause</span>
+            <span><kbd>↑</kbd> <kbd>↓</kbd> previous / next line</span>
+            <span><kbd>E</kbd> edit current line</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const form = $('form'), fileIn = $('file'), video = $('video'), player = $('player');
+
+const S = {
+  file: null, duration: null, playable: false, baseName: 'subtitles', mode: 'hinglish',
+  cues: [], original: [], edited: new Set(), current: -1, editing: -1, autoScroll: true,
+  job: null, xhr: null, poll: null, tick: null, startedAt: 0, track: null, videoUrl: null,
+};
+
+// ---------- helpers ----------
+const clock = s => {
+  s = Math.max(0, Math.floor(s));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+};
+const bytes = n => n >= 1073741824 ? (n / 1073741824).toFixed(2) + ' GB' : (n / 1048576).toFixed(1) + ' MB';
+const langName = code => {
+  try { return new Intl.DisplayNames(['en'], {type: 'language'}).of(code) || code; } catch { return code; }
+};
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+function toast(msg, action){
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
+  if (action){
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = action.label;
+    b.onclick = () => { action.run(); el.remove(); };
+    el.append(b);
+  }
+  $('toasts').append(el);
+  setTimeout(() => el.remove(), action ? 6000 : 2500);
+}
+
+// ---------- file picking ----------
+function setFile(f){
+  if (!f) return;
+  S.file = f;
+  S.baseName = f.name.replace(/\.[^.]+$/, '');
+  const cut = f.name.length > 20 ? f.name.length - 12 : f.name.length;
+  $('fnameStart').textContent = f.name.slice(0, cut);
+  $('fnameEnd').textContent = f.name.slice(cut);
+  $('fname').title = f.name;
+  S.duration = null;
+  renderFileMeta();
+  $('drop').hidden = true; $('loaded').hidden = false;
+
+  resetResults();
+  if (S.videoUrl) URL.revokeObjectURL(S.videoUrl);
+  S.videoUrl = URL.createObjectURL(f);
+  S.playable = false;
+  player.classList.remove('audio'); player.hidden = false; $('previewNote').hidden = true;
+  video.src = S.videoUrl;
+  $('emptyState').hidden = true; $('workspace').hidden = false;
+  showPending('Your subtitles will appear here.', 'Hit Generate when your settings look right.');
+  syncFooter();
+}
+function clearFile(){
+  S.file = null; S.duration = null; fileIn.value = '';
+  video.removeAttribute('src'); video.load();
+  if (S.videoUrl) URL.revokeObjectURL(S.videoUrl), S.videoUrl = null;
+  $('drop').hidden = false; $('loaded').hidden = true;
+  resetResults();
+  $('workspace').hidden = true; $('emptyState').hidden = false;
+  syncFooter();
+}
+function renderFileMeta(){
+  if (!S.file) return;
+  const d = S.duration == null ? 'reading duration…' : S.duration === 0 ? 'duration unknown' : clock(S.duration);
+  $('fmeta').textContent = `${bytes(S.file.size)} · ${d}`;
+}
+fileIn.onchange = () => fileIn.files[0] && setFile(fileIn.files[0]);
+$('changeBtn').onclick = () => fileIn.click();
+$('removeBtn').onclick = () => { clearFile(); fileIn.focus(); };
+
+for (const zone of [$('drop'), $('loaded')]){
+  ['dragenter', 'dragover'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.remove('over'); }));
+  zone.addEventListener('drop', ev => {
+    const f = ev.dataTransfer.files[0]; if (!f || $('settings').disabled) return;
+    const dt = new DataTransfer(); dt.items.add(f); fileIn.files = dt.files; setFile(f);
+  });
+}
+
+video.addEventListener('loadedmetadata', () => {
+  S.duration = isFinite(video.duration) ? video.duration : 0;
+  S.playable = true;
+  const w = video.videoWidth, h = video.videoHeight;
+  if (w && h){
+    player.style.setProperty('--ar', w / h);
+    player.classList.remove('audio');
+    $('workspace').classList.toggle('portrait', h > w);
+  } else {
+    player.classList.add('audio');
+    $('workspace').classList.remove('portrait');
+  }
+  renderFileMeta(); syncFooter();
+});
+video.addEventListener('error', () => {
+  if (!S.file) return;
+  S.duration = 0; S.playable = false;
+  player.hidden = true; $('previewNote').hidden = false;
+  $('workspace').classList.remove('portrait');
+  renderFileMeta(); syncFooter();
+});
+
+// ---------- options ----------
+const SAMPLES = {
+  hinglish: 'aaj main aapko ek naya app dikhane wala hoon jisse aap ghar baithe paise kama sakte hain',
+  hindi: 'आज मैं आपको एक नया ऐप दिखाने वाला हूँ जिससे आप घर बैठे पैसे कमा सकते हैं',
+  english: 'today I am going to show you a new app that lets you earn money from home',
+  original: 'today I am going to show you a new app that lets you earn money from home',
+};
+function renderPreview(){
+  const n = +$('words').value, w = SAMPLES[form.mode.value].split(' ');
+  $('wordsOut').textContent = n;
+  $('pvLine').textContent = w.slice(0, n).join(' ');
+  const next = w.slice(n, n * 2).join(' ');
+  $('pvNext').textContent = next ? `next: ${next}` : '';
+}
+function syncSpoken(){
+  const m = form.mode.value;
+  $('spokenWrap').hidden = m === 'hinglish' || m === 'hindi';
+}
+$('words').oninput = renderPreview;
+form.querySelectorAll('[name=mode]').forEach(r => r.onchange = () => { syncSpoken(); renderPreview(); syncFooter(); });
+$('spoken').onchange = syncFooter;
+syncSpoken(); renderPreview();
+
+// ---------- time estimate ----------
+// Rough defaults for Apple-silicon MLX; refined from this Mac's own past runs.
+const MODEL_DEFAULTS = {turbo: {load: 15, rate: 1 / 12}, small: {load: 8, rate: 1 / 25}};
+const modelFor = () => form.mode.value === 'english' && $('spoken').value !== 'en' ? 'small' : 'turbo';
+function estimate(){
+  if (!S.duration) return null;
+  const m = modelFor(), d = MODEL_DEFAULTS[m], rate = store.get('rate_' + m) || d.rate;
+  return d.load + S.duration * rate;
+}
+function fmtEstimate(sec){
+  if (sec < 60) return 'under a minute';
+  return `~${Math.round(sec / 60)} min`;
+}
+function syncFooter(){
+  const running = !!(S.xhr || S.job);
+  $('goBtn').hidden = running; $('run').hidden = !running;
+  $('goBtn').disabled = !S.file;
+  $('goBtn').textContent = S.cues.length ? 'Generate again' : 'Generate subtitles';
+  const hint = $('footHint');
+  hint.hidden = running;
+  if (!S.file) hint.textContent = 'Add a file to get started';
+  else if (S.duration == null) hint.textContent = 'Reading file…';
+  else {
+    const e = estimate();
+    hint.textContent = e ? `Estimated time: ${fmtEstimate(e)} for ${clock(S.duration)} of media` : 'Ready when you are';
+  }
+}
+
+// ---------- generate / progress ----------
+function stageLabel(stage, p){
+  if (!stage) return 'Starting…';
+  if (/^(Transcribing|Translating)/.test(stage) && !p) return 'Loading model…';
+  return stage;
+}
+function showProgress(label, frac, indeterminate){
+  $('runStage').textContent = label;
+  const pct = Math.round(frac * 100);
+  $('runPct').textContent = indeterminate ? '' : pct + '%';
+  $('bar').classList.toggle('indeterminate', !!indeterminate);
+  $('bar').setAttribute('aria-valuenow', pct);
+  $('barFill').style.width = pct + '%';
+}
+function startTimer(){
+  S.startedAt = Date.now();
+  const upd = () => $('elapsed').textContent = `${clock((Date.now() - S.startedAt) / 1000)} elapsed`;
+  upd(); S.tick = setInterval(upd, 1000);
+}
+function stopRun(){
+  clearInterval(S.poll); clearInterval(S.tick);
+  S.poll = S.tick = S.xhr = S.job = null;
+  $('settings').disabled = false;
+  syncFooter();
+}
+
+form.onsubmit = e => {
+  e.preventDefault();
+  if (!S.file || S.xhr || S.job) return;
+  if (S.edited.size && !confirm('Generating again will discard your edits. Continue?')) return;
+  const fd = new FormData(form);        // build before disabling the fieldset
+  S.mode = form.mode.value;
+  S.runModel = modelFor(); S.runDuration = S.duration;
+  $('settings').disabled = true;
+  $('errorBox').hidden = true;
+  resetResults();
+  showPending('Generating subtitles…', 'This runs on your Mac. You can keep using the page.');
+
+  const xhr = S.xhr = new XMLHttpRequest();
+  xhr.open('POST', '/upload');
+  xhr.upload.onprogress = ev => ev.lengthComputable && showProgress('Uploading…', ev.loaded / ev.total);
+  xhr.onload = () => {
+    let r = {}; try { r = JSON.parse(xhr.responseText || '{}'); } catch {}
+    S.xhr = null;
+    if (r.error || xhr.status !== 200) return fail(r.error || 'Upload failed');
+    S.job = r.job; poll(r.job);
+  };
+  xhr.onerror = () => fail('Could not reach the server. Is app.py still running?');
+  xhr.onabort = () => {};
+  syncFooter();
+  showProgress('Uploading…', 0);
+  startTimer();
+  xhr.send(fd);
+};
+
+function fail(msg){
+  stopRun();
+  $('errorText').textContent = msg; $('errorBox').hidden = false;
+  showPending('Your subtitles will appear here.', 'Something went wrong. Check the message above and try again.');
+}
+
+function poll(job){
+  S.poll = setInterval(async () => {
+    let j;
+    try { j = await (await fetch('/status/' + job)).json(); } catch { return; }
+    if (S.job !== job) return;
+    if (j.status === 'running'){
+      const p = j.progress || 0, label = stageLabel(j.stage, p);
+      return showProgress(label, p, label === 'Loading model…' || /^(Starting|Waiting|Fixing)/.test(label));
+    }
+    const elapsed = (Date.now() - S.startedAt) / 1000;
+    stopRun();
+    if (j.status === 'cancelled') return;
+    if (j.status === 'error') return fail(j.error);
+    if (S.runDuration > 30){           // learn this Mac's speed for future estimates
+      const d = MODEL_DEFAULTS[S.runModel];
+      const rate = Math.max(0.005, (elapsed - d.load) / S.runDuration);
+      const prev = store.get('rate_' + S.runModel);
+      store.set('rate_' + S.runModel, prev ? (prev + rate) / 2 : rate);
+    }
+    loadCues(j.cues, j.language);
+    if (j.warning) toast(j.warning, {label: 'OK', run: () => {}});
+  }, 1500);
+}
+
+$('cancelBtn').onclick = () => {
+  if (S.xhr) S.xhr.abort();
+  if (S.job) fetch('/cancel/' + S.job, {method: 'POST'}).catch(() => {});
+  stopRun();
+  showPending('Your subtitles will appear here.', 'Generation was cancelled.');
+  toast('Generation cancelled');
+  $('goBtn').focus();
+};
+
+// ---------- results ----------
+function showPending(title, hint){
+  $('pending').hidden = false; $('result').hidden = true; $('toolbar').hidden = true;
+  $('pendingTitle').textContent = title; $('pendingHint').textContent = hint;
+}
+function resetResults(){
+  S.cues = []; S.original = []; S.edited.clear(); S.current = -1; S.editing = -1; S.language = null;
+  $('cues').innerHTML = ''; $('overlayText').textContent = '';
+  $('find').value = ''; $('replace').value = '';
+  refreshTrack();
+}
+function loadCues(cues, language){
+  S.cues = cues.map(c => ({...c})); S.original = cues.map(c => c.text); S.language = language;
+  $('pending').hidden = true; $('result').hidden = false; $('toolbar').hidden = false;
+  renderCues(); refreshTrack(); updateStatus(); syncFooter();
+  toast(`${cues.length} subtitles ready`);
+}
+function updateStatus(){
+  const b = document.createElement('b'); b.textContent = S.cues.length;
+  let rest = ' subtitles';
+  if (S.language) rest += ` · Detected: ${langName(S.language)}`;
+  if (S.edited.size) rest += ` · ${S.edited.size} edited`;
+  $('statusText').replaceChildren(b, rest);
+}
+
+// ----- find / replace -----
+function findRegex(){
+  const q = $('find').value;
+  if (!q) return null;
+  let src = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const flags = 'gu' + ($('matchCase').checked ? '' : 'i');
+  if ($('wholeWord').checked){
+    // Unicode-aware word edges so Devanagari works too (\b is ASCII-only).
+    try { return new RegExp(`(?<![\\p{L}\\p{M}\\p{N}_])${src}(?![\\p{L}\\p{M}\\p{N}_])`, flags); }
+    catch { return new RegExp(`\\b${src}\\b`, flags); }
+  }
+  return new RegExp(src, flags);
+}
+function fillText(span, text, re){
+  span.textContent = '';
+  if (!re){ span.textContent = text; return 0; }
+  let last = 0, n = 0;
+  for (const m of text.matchAll(re)){
+    if (!m[0]) continue;
+    span.append(text.slice(last, m.index));
+    const mk = document.createElement('mark'); mk.textContent = m[0]; span.append(mk);
+    last = m.index + m[0].length; n++;
+  }
+  span.append(text.slice(last));
+  return n;
+}
+function applySearch(){
+  const re = findRegex(), rows = $('cues').children;
+  let total = 0, lines = 0;
+  S.cues.forEach((c, i) => {
+    const row = rows[i]; if (!row || i === S.editing) return;
+    const n = fillText(row.querySelector('.text'), c.text, re);
+    total += n; if (n) lines++;
+    row.hidden = !!re && !n;
+  });
+  $('matchCount').textContent = re ? (total ? `${total} match${total > 1 ? 'es' : ''} in ${lines} line${lines > 1 ? 's' : ''}` : 'No matches') : '';
+  $('replaceBtn').disabled = !total;
+}
+['find', 'wholeWord', 'matchCase'].forEach(id => $(id).addEventListener('input', applySearch));
+$('find').addEventListener('keydown', e => { if (e.key === 'Escape' && $('find').value){ e.stopPropagation(); $('find').value = ''; applySearch(); } });
+$('replace').addEventListener('keydown', e => { if (e.key === 'Enter' && !$('replaceBtn').disabled){ e.preventDefault(); $('replaceBtn').click(); } });
+$('replaceBtn').onclick = () => {
+  const re = findRegex(); if (!re) return;
+  const rep = $('replace').value, snapshot = S.cues.map(c => c.text), prevEdited = new Set(S.edited);
+  let total = 0, lines = 0;
+  S.cues.forEach((c, i) => {
+    let n = 0;
+    const next = c.text.replace(re, () => (n++, rep));
+    if (n){ c.text = next; total += n; lines++; markEdited(i); }
+  });
+  $('find').value = '';
+  renderCues(); refreshTrack(); updateStatus();
+  toast(`Replaced ${total} in ${lines} line${lines > 1 ? 's' : ''}`, {label: 'Undo', run: () => {
+    snapshot.forEach((t, i) => S.cues[i] && (S.cues[i].text = t));
+    S.edited = prevEdited; renderCues(); refreshTrack(); updateStatus(); toast('Replace undone');
+  }});
+};
+
+// ----- list -----
+function markEdited(i){ S.cues[i].text !== S.original[i] ? S.edited.add(i) : S.edited.delete(i); }
+function renderRow(row, i){
+  const c = S.cues[i];
+  row.innerHTML = '';
+  row.classList.toggle('current', i === S.current);
+  const ts = document.createElement('button');
+  ts.type = 'button'; ts.className = 'ts';
+  ts.textContent = `${clock(c.start)} – ${clock(c.end)}`;
+  ts.setAttribute('aria-label', `Line ${i + 1}, jump to ${clock(c.start)}`);
+  ts.onclick = () => seekTo(i, true);
+  const txt = document.createElement('div'); txt.className = 'txt';
+  const span = document.createElement('span'); span.className = 'text';
+  txt.append(span);
+  if (S.edited.has(i)){
+    const d = document.createElement('span'); d.className = 'dot'; d.title = 'Edited';
+    d.setAttribute('role', 'img'); d.setAttribute('aria-label', 'Edited'); txt.append(d);
+  }
+  txt.onclick = () => startEdit(i);
+  const ed = document.createElement('button');
+  ed.type = 'button'; ed.className = 'icon-btn'; ed.setAttribute('aria-label', `Edit line ${i + 1}`);
+  ed.innerHTML = '<svg width="16" height="16" aria-hidden="true"><use href="#i-pencil"/></svg>';
+  ed.onclick = () => startEdit(i);
+  row.append(ts, txt, ed);
+  fillText(span, c.text, findRegex());
+}
+function renderCues(){
+  const box = $('cues'); box.innerHTML = ''; S.editing = -1;
+  S.cues.forEach((c, i) => {
+    const row = document.createElement('div'); row.className = 'cue'; row.setAttribute('role', 'listitem');
+    renderRow(row, i); box.append(row);
+  });
+  applySearch();
+}
+function startEdit(i){
+  if (S.editing === i) return;
+  if (S.editing >= 0) commitEdit(true);
+  const row = $('cues').children[i]; if (!row) return;
+  row.hidden = false;
+  S.editing = i;
+  const txt = row.querySelector('.txt'), inp = document.createElement('input');
+  inp.value = S.cues[i].text; inp.setAttribute('aria-label', `Text of line ${i + 1}`);
+  txt.innerHTML = ''; txt.onclick = null; txt.append(inp);
+  inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+  inp.onkeydown = e => {
+    if (e.key === 'Enter'){ e.preventDefault(); commitEdit(true); row.querySelector('.icon-btn')?.focus(); }
+    else if (e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); commitEdit(false); row.querySelector('.icon-btn')?.focus(); }
+  };
+  inp.onblur = () => S.editing === i && commitEdit(true);
+}
+function commitEdit(save){
+  const i = S.editing; if (i < 0) return;
+  const row = $('cues').children[i], inp = row.querySelector('.txt input');
+  S.editing = -1;
+  if (save && inp){
+    const v = inp.value.trim();
+    if (v && v !== S.cues[i].text){ S.cues[i].text = v; markEdited(i); refreshTrack(); updateStatus(); }
+  }
+  renderRow(row, i);
+  if ($('find').value) applySearch();
+  updateOverlay();
+}
+
+// ----- playback sync -----
+function cueAt(t){
+  let lo = 0, hi = S.cues.length - 1;
+  while (lo <= hi){
+    const mid = (lo + hi) >> 1, c = S.cues[mid];
+    if (t < c.start) hi = mid - 1; else if (t >= c.end) lo = mid + 1; else return mid;
+  }
+  return -1;
+}
+function setCurrent(i, forceScroll){
+  const rows = $('cues').children;
+  if (i !== S.current){
+    rows[S.current]?.classList.remove('current');
+    S.current = i;
+    rows[i]?.classList.add('current');
+  }
+  if (i >= 0 && (forceScroll || (S.autoScroll && S.editing < 0))) scrollToRow(rows[i]);
+  updateOverlay();
+}
+function scrollToRow(row){
+  if (!row || row.hidden) return;
+  const box = $('cues'), top = row.offsetTop, bottom = top + row.offsetHeight;
+  if (top < box.scrollTop || bottom > box.scrollTop + box.clientHeight)
+    box.scrollTo({top: Math.max(0, top - box.clientHeight / 3), behavior: reducedMotion ? 'auto' : 'smooth'});
+}
+function updateOverlay(){
+  const i = S.playable ? cueAt(video.currentTime) : -1;
+  $('overlayText').textContent = i >= 0 ? S.cues[i].text : '';
+}
+function syncToVideo(){
+  if (!S.cues.length) return updateOverlay();
+  const i = cueAt(video.currentTime);
+  if (i >= 0 && i !== S.current) setCurrent(i);
+  else if (i < 0) updateOverlay();
+}
+function seekTo(i, play){
+  const c = S.cues[i]; if (!c) return;
+  if (S.playable){
+    video.currentTime = c.start + 0.001;
+    if (play) video.play().catch(() => {});
+  }
+  setCurrent(i, true);
+}
+let raf = 0;
+const loop = () => { syncToVideo(); raf = video.paused ? 0 : requestAnimationFrame(loop); };
+video.addEventListener('play', () => { if (!raf) raf = requestAnimationFrame(loop); });
+video.addEventListener('seeked', syncToVideo);
+video.addEventListener('timeupdate', () => { if (!raf) syncToVideo(); });
+
+$('autoScroll').onclick = () => {
+  S.autoScroll = !S.autoScroll;
+  $('autoScroll').setAttribute('aria-checked', S.autoScroll);
+  if (S.autoScroll && S.current >= 0) scrollToRow($('cues').children[S.current]);
+};
+
+// Native text track only shows in fullscreen, where the overlay can't follow.
+function refreshTrack(){
+  if (!video.textTracks || !window.VTTCue) return;
+  if (!S.track){ S.track = video.addTextTrack('subtitles', 'Subtitles'); S.track.mode = 'hidden'; }
+  [...(S.track.cues || [])].forEach(c => S.track.removeCue(c));
+  S.cues.forEach(c => S.track.addCue(new VTTCue(c.start, c.end, c.text)));
+}
+const setFs = on => S.track && (S.track.mode = on ? 'showing' : 'hidden');
+document.addEventListener('fullscreenchange', () => setFs(document.fullscreenElement === video));
+video.addEventListener('webkitbeginfullscreen', () => setFs(true));
+video.addEventListener('webkitendfullscreen', () => setFs(false));
+
+// ---------- export ----------
+const ts = (s, sep) => {
+  const ms = Math.round(s * 1000), h = Math.floor(ms / 3.6e6), m = Math.floor(ms % 3.6e6 / 6e4),
+        sec = Math.floor(ms % 6e4 / 1000), r = ms % 1000, p = (n, l = 2) => String(n).padStart(l, '0');
+  return `${p(h)}:${p(m)}:${p(sec)}${sep}${p(r, 3)}`;
+};
+const build = {
+  srt: () => S.cues.map((c, i) => `${i + 1}\n${ts(c.start, ',')} --> ${ts(c.end, ',')}\n${c.text}\n`).join('\n'),
+  vtt: () => 'WEBVTT\n\n' + S.cues.map(c => `${ts(c.start, '.')} --> ${ts(c.end, '.')}\n${c.text}\n`).join('\n'),
+  txt: () => S.cues.map(c => c.text).join('\n'),
+};
+function download(fmt){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([build[fmt]()], {type: 'text/plain;charset=utf-8'}));
+  a.download = `${S.baseName}_${S.mode}.${fmt}`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(`${fmt.toUpperCase()} downloaded`);
+}
+
+const dlBtn = $('dlBtn'), dlMenu = $('dlMenu'), items = () => [...dlMenu.querySelectorAll('[role=menuitem]')];
+function openMenu(focusIdx = 0){
+  dlMenu.hidden = false; dlBtn.setAttribute('aria-expanded', 'true');
+  items()[focusIdx]?.focus();
+}
+function closeMenu(refocus){
+  if (dlMenu.hidden) return;
+  dlMenu.hidden = true; dlBtn.setAttribute('aria-expanded', 'false');
+  if (refocus) dlBtn.focus();
+}
+dlBtn.onclick = () => dlMenu.hidden ? openMenu() : closeMenu();
+dlBtn.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ e.preventDefault(); openMenu(e.key === 'ArrowUp' ? items().length - 1 : 0); }
+});
+dlMenu.addEventListener('keydown', e => {
+  const list = items(), i = list.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown'){ e.preventDefault(); list[(i + 1) % list.length].focus(); }
+  else if (e.key === 'ArrowUp'){ e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+  else if (e.key === 'Home'){ e.preventDefault(); list[0].focus(); }
+  else if (e.key === 'End'){ e.preventDefault(); list[list.length - 1].focus(); }
+  else if (e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); closeMenu(true); }
+  else if (e.key === 'Tab') closeMenu();
+});
+dlMenu.querySelectorAll('[data-fmt]').forEach(b => b.onclick = () => { closeMenu(true); download(b.dataset.fmt); });
+document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) closeMenu(); });
+
+$('copyBtn').onclick = async () => {
+  try { await navigator.clipboard.writeText(build.srt()); toast('Copied'); }
+  catch { toast('Copy failed — your browser blocked clipboard access'); }
+};
+
+// ---------- keyboard shortcuts ----------
+document.addEventListener('keydown', e => {
+  if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey || !S.file) return;
+  const t = e.target;
+  if (t.closest('input, textarea, select, [contenteditable=true], [role=menu], video')) return;
+  if (e.key === ' '){
+    // Space on ordinary buttons keeps its normal meaning; inside the list it plays/pauses.
+    if (t.closest('button') && !t.closest('.cues')) return;
+    if (!S.playable) return;
+    e.preventDefault();
+    video.paused ? video.play().catch(() => {}) : video.pause();
+  } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && S.cues.length){
+    e.preventDefault();
+    const cur = S.current, dir = e.key === 'ArrowDown' ? 1 : -1;
+    let next = cur < 0 ? (dir > 0 ? 0 : S.cues.length - 1) : cur + dir;
+    const rows = $('cues').children;
+    while (rows[next]?.hidden) next += dir;            // skip lines hidden by search
+    if (next >= 0 && next < S.cues.length) seekTo(next, false);
+  } else if ((e.key === 'e' || e.key === 'E') && S.cues.length){
+    const i = S.current >= 0 ? S.current : 0;
+    e.preventDefault(); startEdit(i);
+  }
+});
+
+// Buttons activate on Space keyup; stop that when Space was used for play/pause.
+document.addEventListener('keyup', e => {
+  if (e.key === ' ' && e.target.closest?.('.cues button')) e.preventDefault();
+});
+
+syncFooter();
+</script>
+</body>
+</html>
