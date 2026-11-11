@@ -1,8 +1,17 @@
 .venv/
 __pycache__/
+*.pyc
 .DS_Store
+
+# Private: user accounts, payments, learned dictionaries, session secret, API keys
+data/
+.env
+
+# Media and generated files
 uploads/
 outputs/
+renders/
+feedback/
 *.mp4
 *.mov
 *.mkv

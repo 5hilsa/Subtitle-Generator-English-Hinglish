@@ -3,43 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Subtitle Generator</title>
+<title>{{ app_name }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#080808">
 <style>
-/* ---------- tokens ---------- */
+@font-face{font-family:'Cap SemiBold';src:url('/fonts/Poppins-SemiBold.ttf') format('truetype');font-display:swap}
+@font-face{font-family:'Cap ExtraBold';src:url('/fonts/Poppins-ExtraBold.ttf') format('truetype');font-display:swap}
+/* ---------- tokens (same design language as the landing page) ---------- */
 :root{
   color-scheme:dark;
-  --bg:#0e1015; --panel:#161920; --field:#1d212a; --field-hover:#252a36; --field-press:#2c3240;
-  --border:#2b303c; --border-strong:#434a5c;
-  --text:#eceef3; --muted:#a6acba;                 /* muted ≈ 7:1 on panel */
-  --accent:#7b6cff; --accent-strong:#6a5af9; --accent-hover:#7768ff; --accent-press:#5847e6;
-  --accent-ink:#bdb5ff; --accent-soft:rgba(123,108,255,.15);
-  --ok:#4fd69c; --err:#ff8a8a; --err-soft:rgba(255,138,138,.1); --focus:#b0a7ff;
-  --overlay:rgba(0,0,0,.75); --mark:rgba(255,204,77,.35);
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  --bg:#080808; --panel:#111111; --field:#1a1a1a; --field-hover:#222222; --field-press:#2a2a2a;
+  --border:#272727; --border-strong:#3a3a3a;
+  --text:#f5f5f2; --muted:#a3a3a3;
+  --accent:#cdfb50; --accent-strong:#cdfb50; --accent-hover:#d9ff6e; --accent-press:#bfe94a; --on-accent:#080808;
+  --accent-ink:#cdfb50; --accent-soft:rgba(205,251,80,.12);
+  --violet:#bd6cf7; --lilac:#c9c2da;
+  --ok:#cdfb50; --err:#ff8a7a; --err-soft:rgba(255,138,122,.1); --focus:#cdfb50;
+  --overlay:rgba(0,0,0,.75); --mark:rgba(189,108,247,.45);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 18px 40px rgba(0,0,0,.35);
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
-  --r-card:12px; --r-ctl:10px;
+  --r-card:22px; --r-ctl:13px;
+  --ease:cubic-bezier(.22,1,.36,1);
   --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
-}
-@media (prefers-color-scheme: light){
-  :root{
-    color-scheme:light;
-    --bg:#f4f5f9; --panel:#ffffff; --field:#f3f4f8; --field-hover:#eaecf2; --field-press:#e0e3eb;
-    --border:#dde0e8; --border-strong:#b9bfcc;
-    --text:#161821; --muted:#555b6b;
-    --accent:#5443e8; --accent-strong:#5443e8; --accent-hover:#4a39dd; --accent-press:#3f2fc7;
-    --accent-ink:#4332d4; --accent-soft:#efedff;
-    --ok:#0d8050; --err:#c62828; --err-soft:#fdecec; --focus:#5443e8;
-    --mark:rgba(255,196,0,.4);
-    --shadow:0 1px 2px rgba(20,20,40,.05),0 8px 24px rgba(20,20,40,.06);
-  }
 }
 
 /* ---------- base ---------- */
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{margin:0;min-height:100vh;background:radial-gradient(60% 40% at 85% -5%, rgb(189 108 247 / .16) 0%, rgb(60 28 126 / .1) 45%, rgb(8 8 8 / 0) 75%) no-repeat,var(--bg);color:var(--text);font:15px/1.5 Manrope,system-ui,-apple-system,'Segoe UI',sans-serif;letter-spacing:-.005em;-webkit-font-smoothing:antialiased}
+::selection{background:var(--accent);color:var(--on-accent)}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 svg{flex:none}
@@ -47,26 +41,29 @@ svg{flex:none}
 
 .page{max-width:1280px;margin:0 auto;padding:var(--s6)}
 header{margin-bottom:var(--s6);display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s4);flex-wrap:wrap}
-header h1{margin:0;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:-.02em}
-header p{margin:var(--s1) 0 0;color:var(--muted)}
+header h1{margin:0;font-size:clamp(28px,2.2vw + 14px,40px);line-height:1;font-weight:800;letter-spacing:-.045em}
+header p{margin:var(--s3) 0 0;color:var(--muted)}
 .badge{display:inline-flex;align-items:center;gap:var(--s2);padding:var(--s1) var(--s3);border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:13px}
 
 main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:var(--s6);align-items:start}
 @media (max-width:1023px){main{grid-template-columns:1fr}}
 @media (max-width:600px){.page{padding:var(--s4)}}
 
-.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-card);box-shadow:var(--shadow)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r-card);box-shadow:var(--shadow);animation:rise .9s var(--ease) both}
+main>.card:nth-child(2){animation-delay:.08s}
+@keyframes rise{from{opacity:0;transform:translateY(18px);filter:blur(6px)}}
+@media (prefers-reduced-motion: reduce){.card{animation:none}}
 .label{margin:0 0 var(--s3);font-size:12px;line-height:16px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
 .hint{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
 
 /* ---------- buttons ---------- */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-height:40px;padding:var(--s2) var(--s4);border-radius:var(--r-ctl);border:1px solid var(--border);background:var(--field);font-weight:600;font-size:15px;cursor:pointer;transition:background .12s,border-color .12s,transform .06s;white-space:nowrap}
-.btn:hover{background:var(--field-hover);border-color:var(--border-strong)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);min-height:40px;padding:var(--s2) var(--s4);border-radius:999px;border:1px solid var(--border-strong);background:rgb(245 245 242 / .05);font-weight:600;font-size:15px;letter-spacing:-.01em;cursor:pointer;transition:background .25s var(--ease),border-color .25s var(--ease),box-shadow .25s var(--ease),transform .25s var(--ease);white-space:nowrap}
+.btn:hover{background:rgb(245 245 242 / .1);border-color:var(--accent);box-shadow:0 0 20px rgb(205 251 80 / .16)}
 .btn:active{background:var(--field-press);transform:translateY(1px)}
 .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;background:var(--field);border-color:var(--border)}
 .btn.sm{min-height:32px;padding:var(--s1) var(--s3);font-size:13px}
-.btn.primary{background:var(--accent-strong);border-color:transparent;color:#fff}
-.btn.primary:hover{background:var(--accent-hover)}
+.btn.primary{background:var(--accent-strong);border-color:transparent;color:var(--on-accent);box-shadow:0 0 22px rgb(205 251 80 / .18)}
+.btn.primary:hover{background:var(--accent-hover);box-shadow:0 0 30px rgb(205 251 80 / .35)}
 .btn.primary:active{background:var(--accent-press)}
 .btn.primary:disabled{background:var(--accent-strong)}
 .btn.danger:hover{color:var(--err);border-color:var(--err)}
@@ -111,7 +108,7 @@ main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:var(--s6);align-
 .tile label:active{background:var(--field-press)}
 .tile b{font-weight:600;line-height:1.3}
 .tile span{font-size:13px;color:var(--muted);line-height:1.4}
-.tile .check{position:absolute;top:var(--s2);right:var(--s2);display:none;place-items:center;width:20px;height:20px;border-radius:999px;background:var(--accent-strong);color:#fff}
+.tile .check{position:absolute;top:var(--s2);right:var(--s2);display:none;place-items:center;width:20px;height:20px;border-radius:999px;background:var(--accent-strong);color:var(--on-accent)}
 .tile input:checked + label{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
 .tile input:checked + label .check{display:grid}
 .tile input:focus-visible + label{outline:2px solid var(--focus);outline-offset:2px}
@@ -164,6 +161,51 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);cursor:pointer}
 .player.audio .overlay{top:var(--s5);bottom:auto}
 .overlay span{max-width:90%;padding:var(--s1) var(--s3);border-radius:8px;background:var(--overlay);color:#fff;font-weight:600;font-size:clamp(15px,5cqw,28px);line-height:1.35;text-align:center;text-wrap:balance}
 .overlay span:empty{display:none}
+/* Caption styles: mirror render.py so the preview matches the exported video. */
+.player[data-style] .overlay{bottom:var(--cap-bottom,20%);padding:0 8%}
+.player[data-pos=middle] .overlay{bottom:auto;top:50%;transform:translateY(-50%)}
+.player[data-pos=top] .overlay{bottom:auto;top:var(--cap-bottom,20%)}
+.player[data-style] .overlay span{max-width:100%;padding:0;border-radius:0;background:none;font-size:var(--capfs,6cqw);line-height:1.25;
+  font-family:'Cap SemiBold',sans-serif;font-weight:400;-webkit-text-stroke:calc(var(--capfs,6cqw) * .1) #000;paint-order:stroke fill}
+.player[data-style=bold_pop] .overlay span,.player[data-style=yellow] .overlay span{font-family:'Cap ExtraBold',sans-serif;-webkit-text-stroke-width:calc(var(--capfs,6cqw) * .13)}
+.player[data-style=bold_pop] .overlay span{text-transform:uppercase}
+.player[data-style=bold_pop] .overlay b{font-weight:inherit;color:#ffe500;display:inline-block;transform:scale(1.08)}
+.player[data-style=yellow] .overlay span{color:#ffe500}
+.player[data-style=boxed] .overlay span{-webkit-text-stroke:0;background:rgba(0,0,0,.62);padding:.1em .3em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.player[data-style=minimal] .overlay span{-webkit-text-stroke-width:calc(var(--capfs,6cqw) * .04);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.stylebar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s4)}
+.seg{display:inline-flex;flex-wrap:wrap;gap:var(--s1);padding:3px;border:1px solid var(--border);border-radius:999px;background:var(--field)}
+.seg button{min-height:30px;padding:0 var(--s3);border:0;border-radius:999px;background:transparent;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
+.seg button:hover{color:var(--text);background:var(--field-hover)}
+.seg button[aria-pressed=true]{background:var(--accent-strong);color:var(--on-accent)}
+.stylebar .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.stylebar .grp{display:flex;align-items:center;gap:var(--s2)}
+.export-wrap{display:inline-flex;align-items:center;gap:var(--s2)}
+.export-wrap .mini{width:72px;height:6px;border-radius:3px;background:var(--field-press);overflow:hidden}
+.export-wrap .mini div{height:100%;width:0;background:var(--accent);transition:width .3s}
+.engine{font-size:12px;color:var(--muted)}
+.home-link{color:inherit;text-decoration:none}
+.home-link:hover{color:var(--accent-ink)}
+.brand-dot{display:inline-block;width:.2em;height:.2em;margin-left:.06em;border-radius:50%;background:var(--accent)}
+.demo-banner{margin:0 0 var(--s4);padding:var(--s2) var(--s4);border-radius:var(--r-ctl);background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:600;text-align:center}
+.usage{display:inline-flex;align-items:center;gap:var(--s2);font-size:13px;color:var(--muted)}
+.usage.low #minutesLeft{color:var(--err)}
+.plan-pill{padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;font-weight:600}
+.avatar-btn{display:inline-grid;place-items:center;width:36px;height:36px;padding:0;border-radius:50%;border:1px solid var(--border);background:var(--field);color:var(--text);font-weight:600;cursor:pointer;overflow:hidden}
+.avatar-btn img{width:100%;height:100%;object-fit:cover}
+.menu-head{display:flex;flex-direction:column;padding:var(--s2) var(--s3) var(--s3);border-bottom:1px solid var(--border);margin-bottom:var(--s1);min-width:220px}
+.menu-head small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.learn.plans-dlg{width:min(980px,calc(100vw - 32px));overflow:auto}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--s4);padding:var(--s4) var(--s5)}
+.plan{display:flex;flex-direction:column;gap:var(--s2);padding:var(--s4);border:1px solid var(--border);border-radius:var(--r-card)}
+.plan.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.plan h3{margin:0;font-size:16px}
+.plan .price{font-size:26px;font-weight:700;letter-spacing:-.02em}
+.plan .price small{font-size:13px;font-weight:500;color:var(--muted)}
+.plan ul{margin:0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.7;flex:1}
+.topup{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);flex-wrap:wrap;margin:0 var(--s5) var(--s4);padding:var(--s3) var(--s4);border:1px dashed var(--border-strong);border-radius:var(--r-card);font-size:14px}
+.topup:empty{display:none}
+.wm-note{font-size:12px;color:var(--muted)}
 
 .subs{display:flex;flex-direction:column;gap:var(--s3);min-width:0;min-height:0;container:subs/inline-size}
 .list-empty{flex:1;min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s2);padding:var(--s5);border:1px dashed var(--border-strong);border-radius:var(--r-card);color:var(--muted);text-align:center}
@@ -176,6 +218,24 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);cursor:pointer}
 .status svg{color:var(--ok)}
 .status b{color:var(--text);font-weight:600}
 .menu-wrap{position:relative}
+.head-actions{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
+.count-pill{min-width:20px;padding:0 6px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;line-height:20px;text-align:center}
+.learn{width:min(640px,calc(100vw - 32px));max-height:min(720px,calc(100vh - 32px));padding:0;border:1px solid var(--border-strong);border-radius:var(--r-card);background:var(--panel);color:var(--text);box-shadow:var(--shadow)}
+.learn[open]{display:flex;flex-direction:column}
+.learn::backdrop{background:var(--overlay)}
+.learn-head{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--s4);padding:var(--s5) var(--s5) 0}
+.learn-head h2{margin:0;font-size:18px;line-height:1.3}
+.learn-explain{padding:var(--s3) var(--s5) var(--s4);border-bottom:1px solid var(--border)}
+.learn-list{overflow:auto;padding:var(--s2) 0}
+.rule{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:var(--s3);min-height:48px;padding:var(--s2) var(--s5)}
+.rule + .rule{border-top:1px solid var(--border)}
+.rule .pair{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s2);min-width:0}
+.rule .wrong{color:var(--muted);text-decoration:line-through;overflow-wrap:anywhere}
+.rule .right{font-weight:600;overflow-wrap:anywhere}
+.rule .meta{color:var(--muted);font-size:12px}
+.rule .meta.auto{color:var(--ok)}
+.rule.off .pair{opacity:.5}
+.learn-empty{padding:var(--s6) var(--s5);text-align:center}
 .menu{position:absolute;right:0;top:calc(100% + var(--s1));z-index:20;min-width:200px;margin:0;padding:var(--s1);list-style:none;background:var(--panel);border:1px solid var(--border-strong);border-radius:var(--r-ctl);box-shadow:var(--shadow)}
 .menu button{display:flex;justify-content:space-between;align-items:center;gap:var(--s4);width:100%;min-height:40px;padding:var(--s2) var(--s3);border:0;border-radius:8px;background:transparent;cursor:pointer;text-align:left}
 .menu button:hover,.menu button:focus-visible{background:var(--field-hover)}
@@ -200,6 +260,7 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);cursor:pointer}
 .switch .track{position:relative;width:32px;height:20px;border-radius:999px;background:var(--border-strong);transition:background .12s}
 .switch .track::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:#fff;transition:transform .12s}
 .switch[aria-checked=true] .track{background:var(--accent-strong)}
+.switch[aria-checked=true] .track::after{background:var(--on-accent)}
 .switch[aria-checked=true] .track::after{transform:translateX(12px)}
 
 .cues{position:relative;flex:1;min-height:0;max-height:min(560px,70vh);overflow:auto;border:1px solid var(--border);border-radius:var(--r-card);overscroll-behavior:contain}
@@ -244,17 +305,35 @@ kbd{display:inline-block;min-width:24px;padding:0 var(--s1);border:1px solid var
   <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 17v4M17 19h4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
 </svg>
 
 <div class="page">
+{% if demo_mode %}<div class="demo-banner">Demo mode: test accounts and simulated payments. Nothing here is charged.</div>{% endif %}
 <header>
   <div>
-    <h1>Subtitle Generator</h1>
-    <p>Whisper on this Mac's GPU. Your files never leave your computer.</p>
+    <h1><a href="/" class="home-link">{{ app_name }}<span class="brand-dot" aria-hidden="true"></span></a></h1>
+    {% if local_mode %}<p>Runs on your Mac or Windows PC. Your files never leave your computer. <span class="engine" id="engine"></span></p>
+    {% else %}<p>Hinglish captions that learn your words. <span class="engine" id="engine"></span></p>{% endif %}
   </div>
-  <span class="badge"><svg width="16" height="16"><use href="#i-lock"/></svg>Runs locally</span>
+  <div class="head-actions">
+    <button type="button" class="btn sm" id="learnBtn"><svg width="16" height="16"><use href="#i-spark"/></svg>Learned fixes<span class="count-pill" id="learnCount" hidden></span></button>
+    {% if local_mode %}<span class="badge"><svg width="16" height="16"><use href="#i-lock"/></svg>Runs locally</span>
+    {% else %}<span class="usage" id="usage" hidden><span class="plan-pill" id="planPill"></span><span id="minutesLeft"></span></span>
+    <button type="button" class="btn sm primary" id="upgradeBtn" hidden>Upgrade</button>
+    <div class="menu-wrap">
+      <button type="button" class="avatar-btn" id="acctBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="acctMenu" aria-label="Account"><img id="avatar" alt="" referrerpolicy="no-referrer" hidden><span id="avatarInitial"></span></button>
+      <ul class="menu" id="acctMenu" role="menu" aria-labelledby="acctBtn" hidden>
+        <li role="none" class="menu-head"><b id="acctName"></b><small id="acctEmail"></small></li>
+        <li role="none"><button type="button" role="menuitem" id="plansItem">Plans and billing</button></li>
+        <li role="none"><button type="button" role="menuitem" id="logoutItem">Sign out</button></li>
+      </ul>
+    </div>{% endif %}
+  </div>
 </header>
 
 <main>
@@ -359,6 +438,28 @@ kbd{display:inline-block;min-width:24px;padding:0 var(--s1);border:1px solid var
           </ul>
         </div>
         <button type="button" class="btn" id="copyBtn" title="Copy as SRT"><svg width="16" height="16"><use href="#i-copy"/></svg>Copy</button>
+        <span class="export-wrap">
+          <button type="button" class="btn primary" id="exportBtn"><svg width="16" height="16"><use href="#i-film"/></svg><span id="exportLabel">Export video</span></button>
+          <span class="mini" id="exportBar" hidden><div id="exportFill"></div></span>
+        </span>
+        <span class="wm-note" id="wmNote" hidden>Free exports carry a small watermark</span>
+      </div>
+
+      <div class="stylebar span" id="stylebar" hidden>
+        <div class="grp"><span class="lbl" id="l-style">Style</span>
+          <div class="seg" role="group" aria-labelledby="l-style" data-opt="style">
+            <button type="button" data-v="clean">Clean</button><button type="button" data-v="bold_pop">Bold Pop</button>
+            <button type="button" data-v="boxed">Boxed</button><button type="button" data-v="yellow">Yellow</button>
+            <button type="button" data-v="minimal">Minimal</button>
+          </div></div>
+        <div class="grp"><span class="lbl" id="l-pos">Position</span>
+          <div class="seg" role="group" aria-labelledby="l-pos" data-opt="position">
+            <button type="button" data-v="top">Top</button><button type="button" data-v="middle">Middle</button><button type="button" data-v="bottom">Bottom</button>
+          </div></div>
+        <div class="grp"><span class="lbl" id="l-size">Size</span>
+          <div class="seg" role="group" aria-labelledby="l-size" data-opt="size">
+            <button type="button" data-v="small">S</button><button type="button" data-v="medium">M</button><button type="button" data-v="large">L</button>
+          </div></div>
       </div>
 
       <div class="media" id="media">
@@ -400,9 +501,38 @@ kbd{display:inline-block;min-width:24px;padding:0 var(--s1);border:1px solid var
 </main>
 </div>
 
+{% if not local_mode %}<dialog class="learn plans-dlg" id="plansDlg" aria-labelledby="plansTitle">
+  <div class="learn-head">
+    <div>
+      <h2 id="plansTitle">Plans</h2>
+      <p class="hint" id="plansSummary"></p>
+    </div>
+    <button type="button" class="icon-btn" id="plansClose" aria-label="Close"><svg width="16" height="16" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="plan-grid" id="planGrid"></div>
+  <div class="topup" id="topup"></div>
+  <p class="hint learn-explain">Pay with UPI, cards or netbanking through Razorpay. Plans are 30-day passes, so nothing renews without you.
+    Buying the same plan again adds 30 days. Minutes reset on the 1st of each month; top-up minutes never expire.</p>
+</dialog>
+{% endif %}
+
+<dialog class="learn" id="learnDlg" aria-labelledby="learnTitle">
+  <div class="learn-head">
+    <div>
+      <h2 id="learnTitle">Learned fixes</h2>
+      <p class="hint" id="learnSummary"></p>
+    </div>
+    <button type="button" class="icon-btn" id="learnClose" aria-label="Close"><svg width="16" height="16" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </div>
+  <p class="hint learn-explain">Fix a word once and it's fixed on every video after that, even when the AI would have misspelled it a new way.
+    Everyday words whose spelling depends on meaning (like main / mein) are only suggested to the AI, never forced. Turn off or delete anything it learned wrong.</p>
+  <div class="learn-list" id="learnList"></div>
+</dialog>
+
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
 <script>
+const CTX = {{ {"app_name": app_name, "local": local_mode, "payments": payments, "demo": demo_mode} | tojson }};
 const $ = id => document.getElementById(id);
 const form = $('form'), fileIn = $('file'), video = $('video'), player = $('player');
 
@@ -556,6 +686,10 @@ function syncFooter(){
   hint.hidden = running;
   if (!S.file) hint.textContent = 'Add a file to get started';
   else if (S.duration == null) hint.textContent = 'Reading file…';
+  else if (ACC && ACC.max_seconds && S.duration > ACC.max_seconds + 1)
+    hint.textContent = `This is ${clock(S.duration)} long; the ${ACC.plan_name} plan allows up to ${clock(ACC.max_seconds)}. Upgrade or trim it.`;
+  else if (ACC && ACC.remaining_seconds != null && S.duration > ACC.remaining_seconds + 1)
+    hint.textContent = `You have ${clock(ACC.remaining_seconds)} left this month. Upgrade or add minutes to process this.`;
   else {
     const e = estimate();
     hint.textContent = e ? `Estimated time: ${fmtEstimate(e)} for ${clock(S.duration)} of media` : 'Ready when you are';
@@ -606,6 +740,8 @@ form.onsubmit = e => {
   xhr.onload = () => {
     let r = {}; try { r = JSON.parse(xhr.responseText || '{}'); } catch {}
     S.xhr = null;
+    if (xhr.status === 401) return location.assign('/');
+    if (r.upgrade){ fail(r.error); return openPlans(); }
     if (r.error || xhr.status !== 200) return fail(r.error || 'Upload failed');
     S.job = r.job; poll(r.job);
   };
@@ -633,6 +769,7 @@ function poll(job){
       return showProgress(label, p, label === 'Loading model…' || /^(Starting|Waiting|Fixing)/.test(label));
     }
     const elapsed = (Date.now() - S.startedAt) / 1000;
+    if (j.status === 'done') S.resultJob = job;
     stopRun();
     if (j.status === 'cancelled') return;
     if (j.status === 'error') return fail(j.error);
@@ -643,6 +780,7 @@ function poll(job){
       store.set('rate_' + S.runModel, prev ? (prev + rate) / 2 : rate);
     }
     loadCues(j.cues, j.language);
+    loadAccount();
     if (j.warning) toast(j.warning, {label: 'OK', run: () => {}});
   }, 1500);
 }
@@ -658,11 +796,12 @@ $('cancelBtn').onclick = () => {
 
 // ---------- results ----------
 function showPending(title, hint){
-  $('pending').hidden = false; $('result').hidden = true; $('toolbar').hidden = true;
+  $('pending').hidden = false; $('result').hidden = true; $('toolbar').hidden = true; $('stylebar').hidden = true;
   $('pendingTitle').textContent = title; $('pendingHint').textContent = hint;
 }
 function resetResults(){
   S.cues = []; S.original = []; S.edited.clear(); S.current = -1; S.editing = -1; S.language = null;
+  S.resultJob = null; resetExport();
   $('cues').innerHTML = ''; $('overlayText').textContent = '';
   $('find').value = ''; $('replace').value = '';
   refreshTrack();
@@ -670,6 +809,7 @@ function resetResults(){
 function loadCues(cues, language){
   S.cues = cues.map(c => ({...c})); S.original = cues.map(c => c.text); S.language = language;
   $('pending').hidden = true; $('result').hidden = false; $('toolbar').hidden = false;
+  $('stylebar').hidden = !S.playable; $('exportBtn').hidden = !S.playable;
   renderCues(); refreshTrack(); updateStatus(); syncFooter();
   toast(`${cues.length} subtitles ready`);
 }
@@ -734,13 +874,85 @@ $('replaceBtn').onclick = () => {
   $('find').value = '';
   renderCues(); refreshTrack(); updateStatus();
   toast(`Replaced ${total} in ${lines} line${lines > 1 ? 's' : ''}`, {label: 'Undo', run: () => {
-    snapshot.forEach((t, i) => S.cues[i] && (S.cues[i].text = t));
+    snapshot.forEach((t, i) => { if (S.cues[i] && S.cues[i].text !== t){ S.cues[i].text = t; learn(i); } });
     S.edited = prevEdited; renderCues(); refreshTrack(); updateStatus(); toast('Replace undone');
   }});
 };
 
 // ----- list -----
-function markEdited(i){ S.cues[i].text !== S.original[i] ? S.edited.add(i) : S.edited.delete(i); }
+function markEdited(i){ S.cues[i].text !== S.original[i] ? S.edited.add(i) : S.edited.delete(i); learn(i); }
+
+// ----- feedback: every edit is saved so future videos learn from it -----
+const pendingLearn = new Set();
+let learnTimer = null;
+function learn(i){
+  pendingLearn.add(i);
+  clearTimeout(learnTimer);
+  learnTimer = setTimeout(flushLearn, 800);
+}
+async function flushLearn(){
+  if (!pendingLearn.size) return;
+  const items = [...pendingLearn].filter(i => S.cues[i]).map(i => ({
+    index: i, before: S.original[i], after: S.cues[i].text, source: S.cues[i].source || ''}));
+  pendingLearn.clear();
+  try {
+    const r = await fetch('/feedback', {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({video: S.baseName, mode: S.mode, items})});
+    if (r.ok) refreshLearnCount();
+  } catch {}
+}
+addEventListener('pagehide', () => { clearTimeout(learnTimer); flushLearn(); });
+
+async function fetchRules(){
+  try { return await (await fetch('/feedback/rules')).json(); } catch { return null; }
+}
+async function refreshLearnCount(){
+  const d = await fetchRules(); if (!d) return;
+  $('learnCount').textContent = d.rules.length; $('learnCount').hidden = !d.rules.length;
+}
+const MODE_NAMES = {hinglish: 'Hinglish', hindi: 'Hindi', english: 'English', original: 'Original'};
+async function renderRules(){
+  const d = await fetchRules(), list = $('learnList');
+  if (!d){ list.innerHTML = '<p class="hint learn-empty">Couldn\'t load learned fixes.</p>'; return; }
+  $('learnSummary').textContent = `${d.corrections} corrected line${d.corrections === 1 ? '' : 's'} from ${d.videos} video${d.videos === 1 ? '' : 's'}`;
+  $('learnCount').textContent = d.rules.length; $('learnCount').hidden = !d.rules.length;
+  list.innerHTML = '';
+  if (!d.rules.length){
+    list.innerHTML = '<p class="hint learn-empty">Nothing learned yet. Edit a subtitle line and the fix will show up here.</p>';
+    return;
+  }
+  d.rules.forEach(r => {
+    const row = document.createElement('div'); row.className = 'rule' + (r.disabled ? ' off' : '');
+    const pair = document.createElement('div'); pair.className = 'pair';
+    const w = document.createElement('span'); w.className = 'wrong'; w.textContent = r.wrong;
+    const arrow = document.createElement('span'); arrow.className = 'meta'; arrow.textContent = '→';
+    const rt = document.createElement('span'); rt.className = 'right'; rt.textContent = r.right;
+    const meta = document.createElement('span');
+    meta.className = 'meta' + (r.auto ? ' auto' : '');
+    meta.textContent = `${MODE_NAMES[r.mode] || r.mode} · ${r.count}× · ` +
+      (r.disabled ? 'off' : r.auto ? 'auto-applied' : r.ambiguous ? 'AI hint (everyday word)' : 'AI hint');
+    pair.append(w, arrow, rt, meta);
+    const tog = document.createElement('button');
+    tog.type = 'button'; tog.className = 'btn sm'; tog.textContent = r.disabled ? 'Turn on' : 'Turn off';
+    tog.onclick = async () => {
+      await fetch('/feedback/rules/' + encodeURIComponent(r.id), {method: 'POST',
+        headers: {'Content-Type': 'application/json'}, body: JSON.stringify({disabled: !r.disabled})});
+      renderRules();
+    };
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'icon-btn'; del.setAttribute('aria-label', `Delete fix ${r.wrong} to ${r.right}`);
+    del.innerHTML = '<svg width="16" height="16" aria-hidden="true"><use href="#i-trash"/></svg>';
+    del.onclick = async () => {
+      await fetch('/feedback/rules/' + encodeURIComponent(r.id), {method: 'DELETE'});
+      renderRules(); toast('Fix deleted');
+    };
+    row.append(pair, tog, del); list.append(row);
+  });
+}
+$('learnBtn').onclick = async () => { await flushLearn(); renderRules(); $('learnDlg').showModal(); };
+$('learnClose').onclick = () => $('learnDlg').close();
+$('learnDlg').addEventListener('click', e => { if (e.target === $('learnDlg')) $('learnDlg').close(); });
+refreshLearnCount();
 function renderRow(row, i){
   const c = S.cues[i];
   row.innerHTML = '';
@@ -828,8 +1040,196 @@ function scrollToRow(row){
     box.scrollTo({top: Math.max(0, top - box.clientHeight / 3), behavior: reducedMotion ? 'auto' : 'smooth'});
 }
 function updateOverlay(){
-  const i = S.playable ? cueAt(video.currentTime) : -1;
-  $('overlayText').textContent = i >= 0 ? S.cues[i].text : '';
+  const i = S.playable ? cueAt(video.currentTime) : -1, el = $('overlayText');
+  if (i < 0){ el.textContent = ''; return; }
+  const c = S.cues[i];
+  if (CAP.style !== 'bold_pop'){ el.textContent = c.text; return; }
+  // Word-by-word highlight, timed the same way render.py does it.
+  const words = c.text.split(/\s+/).filter(Boolean), t = video.currentTime;
+  let active = words.length - 1;
+  if (c.wt && c.wt.length === words.length){
+    for (let k = 0; k < words.length; k++){ if (t < (k + 1 < words.length ? c.wt[k + 1][0] : c.end)){ active = k; break; } }
+  } else {
+    const total = words.reduce((n, w) => n + w.length, 0) || 1;
+    let acc = c.start;
+    for (let k = 0; k < words.length; k++){ acc += (c.end - c.start) * words[k].length / total; if (t < acc){ active = k; break; } }
+  }
+  el.replaceChildren(...words.flatMap((w, k) => {
+    const n = k === active ? Object.assign(document.createElement('b'), {textContent: w}) : document.createTextNode(w);
+    return k ? [document.createTextNode(' '), n] : [n];
+  }));
+}
+
+// ---------- caption style (preview + burned-in export) ----------
+const CAP = Object.assign({style: 'clean', position: 'bottom', size: 'medium'}, store.get('caption') || {});
+const CAP_SCALE = {clean: 1, bold_pop: 1.15, boxed: .95, yellow: 1.05, minimal: .8}, CAP_SIZE = {small: .8, medium: 1, large: 1.25};
+function applyCaptionStyle(){
+  player.dataset.style = CAP.style; player.dataset.pos = CAP.position;
+  const ar = video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 16 / 9;
+  // render.py sizes text from the video's short side; the player is sized by its width (cqw).
+  const shortSide = ar < 1 ? 100 : 100 / ar;
+  player.style.setProperty('--capfs', (shortSide * (ar < 1 ? .075 : .06) * CAP_SCALE[CAP.style] * CAP_SIZE[CAP.size]).toFixed(2) + 'cqw');
+  player.style.setProperty('--cap-bottom', ar < 1 ? '20%' : '8%');
+  document.querySelectorAll('.seg').forEach(g => g.querySelectorAll('button').forEach(b =>
+    b.setAttribute('aria-pressed', String(CAP[g.dataset.opt] === b.dataset.v))));
+  updateOverlay();
+}
+document.querySelectorAll('.seg').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  CAP[g.dataset.opt] = b.dataset.v; store.set('caption', CAP); applyCaptionStyle();
+}));
+video.addEventListener('loadedmetadata', applyCaptionStyle);
+applyCaptionStyle();
+
+let exportPoll = null;
+function resetExport(){
+  clearInterval(exportPoll); exportPoll = null;
+  $('exportLabel').textContent = 'Export video'; $('exportBar').hidden = true; $('exportFill').style.width = '0';
+  $('exportBtn').disabled = false;
+}
+$('exportBtn').onclick = async () => {
+  if (!S.resultJob) return toast('Generate subtitles first');
+  if (S.editing >= 0) commitEdit(true);
+  if (exportPoll){                                   // second click = cancel
+    fetch(`/render/${S.resultJob}/cancel`, {method: 'POST'}).catch(() => {});
+    resetExport(); return toast('Export cancelled');
+  }
+  const job = S.resultJob;
+  let r;
+  try {
+    r = await fetch(`/render/${job}`, {method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({...CAP, cues: S.cues.map(c => ({start: c.start, end: c.end, text: c.text, wt: c.wt}))})});
+  } catch { return toast('Could not reach the server. Is app.py still running?'); }
+  if (!r.ok){ const e = await r.json().catch(() => ({})); return toast(e.error || 'Export failed'); }
+  $('exportLabel').textContent = 'Exporting… 0%'; $('exportBar').hidden = false;
+  exportPoll = setInterval(async () => {
+    let s; try { s = await (await fetch(`/render/${job}/status`)).json(); } catch { return; }
+    if (S.resultJob !== job) return resetExport();
+    if (s.status === 'running'){
+      const p = Math.round((s.progress || 0) * 100);
+      $('exportLabel').textContent = `Exporting… ${p}% (click to cancel)`; $('exportFill').style.width = p + '%';
+      return;
+    }
+    resetExport();
+    if (s.status === 'done'){
+      const a = document.createElement('a'); a.href = `/render/${job}/file`; a.click();
+      toast('Video exported with captions');
+    } else if (s.status === 'error') toast(s.error || 'Export failed', {label: 'OK', run: () => {}});
+  }, 1000);
+};
+if (CTX.local) fetch('/info').then(r => r.json()).then(d => { $('engine').textContent = `· Speech engine: ${d.device}`; }).catch(() => {});
+
+// ---------- account, plans and payments (website mode) ----------
+let ACC = null;
+const mins = sec => sec >= 60 ? `${Math.floor(sec / 60)} min` : `${Math.round(sec)} s`;
+const rupees = paise => '₹' + (paise / 100).toLocaleString('en-IN');
+async function loadAccount(){
+  if (CTX.local) return;
+  let r;
+  try { r = await fetch('/account'); } catch { return; }
+  if (r.status === 401) return location.assign('/');
+  ACC = await r.json();
+  $('usage').hidden = false;
+  $('planPill').textContent = ACC.plan_name;
+  $('minutesLeft').textContent = `${mins(ACC.remaining_seconds)} left`;
+  $('usage').classList.toggle('low', ACC.remaining_seconds < 60);
+  $('upgradeBtn').hidden = ACC.plan !== 'free';
+  $('wmNote').hidden = !ACC.watermark;
+  $('acctName').textContent = ACC.name || 'Your account'; $('acctEmail').textContent = ACC.email || '';
+  $('avatarInitial').textContent = (ACC.name || ACC.email || '?').trim().charAt(0).toUpperCase();
+  if (ACC.picture){ $('avatar').src = ACC.picture; $('avatar').hidden = false; $('avatarInitial').hidden = true; }
+  syncFooter();
+}
+
+let PLANS = null;
+async function openPlans(){
+  if (CTX.local) return;
+  if (!PLANS){ try { PLANS = await (await fetch('/billing/plans')).json(); } catch { return toast('Could not load plans'); } }
+  await loadAccount();
+  const until = ACC.plan_until ? ` until ${new Date(ACC.plan_until * 1000).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})}` : '';
+  $('plansSummary').textContent = `You're on ${ACC.plan_name}${until} · ${mins(ACC.remaining_seconds)} left this month`;
+  const grid = $('planGrid'); grid.innerHTML = '';
+  const buyable = {creator: 'creator_30d', pro: 'pro_30d'};
+  ['free', 'creator', 'pro'].map(k => [k, PLANS.plans[k]]).forEach(([key, p]) => {
+    const card = document.createElement('div'); card.className = 'plan' + (ACC.plan === key ? ' current' : '');
+    const h = document.createElement('h3'); h.textContent = p.name;
+    const price = document.createElement('div'); price.className = 'price';
+    price.textContent = p.price ? rupees(p.price) : '₹0';
+    const per = document.createElement('small'); per.textContent = p.price ? ' / 30 days' : ' forever'; price.append(per);
+    const ul = document.createElement('ul');
+    [`${p.minutes} minutes of video a month`, `Videos up to ${p.max_seconds / 60} min long`,
+     p.watermark ? 'Small watermark on video exports' : 'No watermark',
+     'All caption styles, SRT and VTT', 'Learns your words as you edit'].forEach(t => {
+      const li = document.createElement('li'); li.textContent = t; ul.append(li); });
+    const btn = document.createElement('button'); btn.type = 'button';
+    if (ACC.plan === key){ btn.className = 'btn'; btn.textContent = key === 'free' ? 'Current plan' : 'Add 30 days'; btn.disabled = key === 'free'; }
+    else { btn.className = 'btn' + (key === 'creator' ? ' primary' : ''); btn.textContent = key === 'free' ? 'Free' : `Get ${p.name}`; btn.disabled = key === 'free'; }
+    if (buyable[key]) btn.onclick = () => buy(buyable[key]);
+    card.append(h, price, ul, btn); grid.append(card);
+  });
+  const t = PLANS.products.topup_30, top = $('topup'); top.innerHTML = '';
+  const label = document.createElement('span'); label.textContent = `Need a few more minutes? ${t.minutes} extra minutes for ${rupees(t.amount)}, valid on any plan.`;
+  const tb = document.createElement('button'); tb.type = 'button'; tb.className = 'btn sm'; tb.textContent = 'Add minutes'; tb.onclick = () => buy('topup_30');
+  top.append(label, tb);
+  if (!$('plansDlg').open) $('plansDlg').showModal();
+}
+
+function loadRazorpay(){
+  return window.Razorpay ? Promise.resolve() : new Promise((ok, bad) => {
+    const sc = document.createElement('script'); sc.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    sc.onload = ok; sc.onerror = () => bad(new Error('Could not load Razorpay')); document.head.append(sc);
+  });
+}
+async function buy(product){
+  if (!PLANS.payments) return toast('Payments are not set up on this server yet.');
+  let order;
+  try {
+    const r = await fetch('/billing/order', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({product})});
+    order = await r.json();
+    if (!r.ok) return toast(order.error || 'Could not start the payment');
+    if (order.demo){
+      $('plansDlg').close();
+      if (!confirm(`DEMO checkout\n\n${order.description}: ${rupees(order.amount)}\n\nSimulate a successful payment? No money is charged.`))
+        return toast('Payment cancelled (demo)');
+      const p = await fetch('/billing/demo-pay', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({order_id: order.order_id})});
+      if (!p.ok) return toast('Demo payment failed');
+      await loadAccount(); return toast('Payment received (demo). Thank you!');
+    }
+    await loadRazorpay();
+  } catch { return toast('Could not start the payment. Check your connection.'); }
+  $('plansDlg').close();
+  const rzp = new Razorpay({
+    key: order.key_id, order_id: order.order_id, amount: order.amount, currency: order.currency,
+    name: order.name, description: order.description, prefill: order.prefill,
+    theme: {color: getComputedStyle(document.documentElement).getPropertyValue('--accent-strong').trim() || '#6a5af9'},
+    handler: async resp => {
+      try {
+        const r = await fetch('/billing/verify', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(resp)});
+        const d = await r.json();
+        if (!r.ok) return toast(d.error || 'Payment could not be verified');
+        await loadAccount(); toast('Payment received. Thank you!');
+      } catch { toast('Payment done; refresh in a minute to see it.'); }
+    },
+  });
+  rzp.on('payment.failed', e => toast(e.error?.description || 'Payment failed. No money was taken.'));
+  rzp.open();
+}
+
+if (!CTX.local){
+  $('upgradeBtn').onclick = openPlans;
+  $('plansClose').onclick = () => $('plansDlg').close();
+  $('plansDlg').addEventListener('click', e => { if (e.target === $('plansDlg')) $('plansDlg').close(); });
+  const acctBtn = $('acctBtn'), acctMenu = $('acctMenu');
+  const closeAcct = () => { acctMenu.hidden = true; acctBtn.setAttribute('aria-expanded', 'false'); };
+  acctBtn.onclick = e => { e.stopPropagation(); const open = acctMenu.hidden; acctMenu.hidden = !open; acctBtn.setAttribute('aria-expanded', String(open)); if (open) $('plansItem').focus(); };
+  acctMenu.addEventListener('keydown', e => { if (e.key === 'Escape'){ closeAcct(); acctBtn.focus(); } });
+  document.addEventListener('click', e => { if (!e.target.closest('#acctMenu')) closeAcct(); });
+  $('plansItem').onclick = () => { closeAcct(); openPlans(); };
+  $('logoutItem').onclick = async () => { await fetch('/auth/logout', {method: 'POST'}).catch(() => {}); location.assign('/'); };
+  loadAccount().then(() => {
+    // Arriving from a "Get Creator / Pro" button on the landing page opens the plans straight away.
+    if (new URLSearchParams(location.search).has('plans')){ history.replaceState(null, '', '/app'); openPlans(); }
+  });
 }
 function syncToVideo(){
   if (!S.cues.length) return updateOverlay();

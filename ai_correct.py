@@ -58,7 +58,7 @@ SCHEMA = {
 }
 
 
-def _fix_chunk(client, title, lines, auto, lo, hi):
+def _fix_chunk(client, system, title, lines, auto, lo, hi):
     payload = {
         "video_title": title,
         "context_before": lines[max(0, lo - CONTEXT):lo],
@@ -68,7 +68,7 @@ def _fix_chunk(client, title, lines, auto, lo, hi):
     with client.beta.messages.stream(
         model=MODEL,
         max_tokens=64000,
-        system=SYSTEM,
+        system=system,
         messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
         output_config={"effort": "high", "format": {"type": "json_schema", "schema": SCHEMA}},
         betas=["server-side-fallback-2026-07-01"],
@@ -85,11 +85,13 @@ def _fix_chunk(client, title, lines, auto, lo, hi):
     return [fixed[i] for i in range(lo, hi)]
 
 
-def correct_hinglish(lines, auto, title=""):
-    """lines: Devanagari text per subtitle; auto: rule-based Hinglish per subtitle.
+def correct_hinglish(lines, auto, title="", guidance=""):
+    """lines: Devanagari text per subtitle; auto: rule-based Hinglish per subtitle;
+    guidance: extra instructions learned from the user's past corrections.
     Returns corrected Hinglish, one string per subtitle, in the same order."""
     client = anthropic.Anthropic()
+    system = SYSTEM + ("\n\n" + guidance if guidance else "")
     spans = [(lo, min(lo + CHUNK, len(lines))) for lo in range(0, len(lines), CHUNK)]
     with ThreadPoolExecutor(max_workers=4) as pool:
-        parts = pool.map(lambda s: _fix_chunk(client, title, lines, auto, *s), spans)
+        parts = pool.map(lambda s: _fix_chunk(client, system, title, lines, auto, *s), spans)
         return [t for part in parts for t in part]

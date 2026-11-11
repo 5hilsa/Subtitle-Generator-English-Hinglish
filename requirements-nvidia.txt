@@ -1,0 +1,3 @@
+# Optional, Windows/Linux with an NVIDIA GPU: CUDA 12 libraries for faster-whisper.
+nvidia-cublas-cu12
+nvidia-cudnn-cu12==9.*
