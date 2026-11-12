@@ -24,6 +24,8 @@ from plans import PLANS, PRODUCTS
 import transcriber
 from transcriber import Cancelled, load_audio
 import render
+import looks
+import typefaces
 from hinglish import to_hinglish
 from ai_correct import correct_hinglish
 import feedback
@@ -199,12 +201,13 @@ def _remove(path):
         pass
 
 
-def run_render(job_id, cues, style, position, size, watermark):
+def run_render(job_id, cues, template, position, size, watermark, font=None, accent=None):
     job = jobs[job_id]
     r = job["render"]
-    out = os.path.join(RENDERS, f"{job_id}_{style}.mp4")
+    out = os.path.join(RENDERS, f"{job_id}_{template}.mp4")
     try:
-        render.render(job["path"], cues, out, style=style, position=position, size=size, watermark=watermark,
+        render.render(job["path"], cues, out, template=template, position=position, size=size, watermark=watermark,
+                      font=font, accent=accent,
                       progress=lambda f: r.update(progress=f), should_stop=lambda: r.get("cancel"))
         r.update(status="done", progress=1.0, file=out)
     except InterruptedError:
@@ -219,7 +222,7 @@ def page_context():
     return {"app_name": config.APP_NAME, "local_mode": config.LOCAL_MODE,
             "google_client_id": config.GOOGLE_CLIENT_ID, "payments": config.PAYMENTS_ENABLED,
             "demo_mode": config.DEMO_MODE,
-            "plans": PLANS, "products": PRODUCTS}
+            "plans": PLANS, "products": PRODUCTS, "fonts": typefaces.catalog(), "looks": looks.catalog()}
 
 
 @app.route("/")
@@ -299,8 +302,7 @@ def fonts(name):
 
 @app.route("/info")
 def info():
-    return jsonify(backend=transcriber.BACKEND, device=transcriber.DEVICE,
-                   styles=list(render.STYLES), positions=list(render.POSITIONS), sizes=list(render.SIZES))
+    return jsonify(backend=transcriber.BACKEND, device=transcriber.DEVICE)
 
 
 @app.route("/render/<job_id>", methods=["POST"])
@@ -318,12 +320,14 @@ def start_render(job_id):
             for c in d.get("cues") or [] if str(c.get("text", "")).strip()]
     if not cues:
         return jsonify(error="No subtitles to burn in"), 400
-    style = d.get("style") if d.get("style") in render.STYLES else "clean"
+    template = d.get("template") if d.get("template") in looks.TEMPLATES else looks.DEFAULT
+    accent = d.get("accent") if isinstance(d.get("accent"), str) else None   # validated in looks.with_accent
     position = d.get("position") if d.get("position") in render.POSITIONS else "bottom"
     size = d.get("size") if d.get("size") in render.SIZES else "medium"
+    font = d.get("font") if d.get("font") in typefaces.FONTS else None   # None = the template's own font
     watermark = f"Made with {config.APP_NAME}" if db.account(current_uid())["watermark"] else None
-    job["render"] = {"status": "running", "progress": 0.0, "style": style}
-    threading.Thread(target=run_render, args=(job_id, cues, style, position, size, watermark),
+    job["render"] = {"status": "running", "progress": 0.0, "template": template}
+    threading.Thread(target=run_render, args=(job_id, cues, template, position, size, watermark, font, accent),
                      daemon=True).start()
     return jsonify(ok=True)
 

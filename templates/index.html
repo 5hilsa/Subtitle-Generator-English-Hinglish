@@ -9,8 +9,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&display=swap" rel="stylesheet">
 <meta name="theme-color" content="#080808">
 <style>
-@font-face{font-family:'Cap SemiBold';src:url('/fonts/Poppins-SemiBold.ttf') format('truetype');font-display:swap}
-@font-face{font-family:'Cap ExtraBold';src:url('/fonts/Poppins-ExtraBold.ttf') format('truetype');font-display:swap}
 /* ---------- tokens (same design language as the landing page) ---------- */
 :root{
   color-scheme:dark;
@@ -37,7 +35,6 @@ body{margin:0;min-height:100vh;background:radial-gradient(60% 40% at 85% -5%, rg
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 svg{flex:none}
-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 .page{max-width:1280px;margin:0 auto;padding:var(--s6)}
 header{margin-bottom:var(--s6);display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s4);flex-wrap:wrap}
@@ -157,23 +154,52 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);cursor:pointer}
 .player video{display:block;width:100%;height:100%;object-fit:contain;background:#000}
 .player.audio{width:100%;aspect-ratio:auto;padding-top:calc(2 * var(--s7))}
 .player.audio video{height:56px}
-.overlay{position:absolute;left:0;right:0;bottom:calc(var(--s7) + var(--s5));display:flex;justify-content:center;padding:0 var(--s4);pointer-events:none}
-.player.audio .overlay{top:var(--s5);bottom:auto}
-.overlay span{max-width:90%;padding:var(--s1) var(--s3);border-radius:8px;background:var(--overlay);color:#fff;font-weight:600;font-size:clamp(15px,5cqw,28px);line-height:1.35;text-align:center;text-wrap:balance}
-.overlay span:empty{display:none}
-/* Caption styles: mirror render.py so the preview matches the exported video. */
-.player[data-style] .overlay{bottom:var(--cap-bottom,20%);padding:0 8%}
-.player[data-pos=middle] .overlay{bottom:auto;top:50%;transform:translateY(-50%)}
-.player[data-pos=top] .overlay{bottom:auto;top:var(--cap-bottom,20%)}
-.player[data-style] .overlay span{max-width:100%;padding:0;border-radius:0;background:none;font-size:var(--capfs,6cqw);line-height:1.25;
-  font-family:'Cap SemiBold',sans-serif;font-weight:400;-webkit-text-stroke:calc(var(--capfs,6cqw) * .1) #000;paint-order:stroke fill}
-.player[data-style=bold_pop] .overlay span,.player[data-style=yellow] .overlay span{font-family:'Cap ExtraBold',sans-serif;-webkit-text-stroke-width:calc(var(--capfs,6cqw) * .13)}
-.player[data-style=bold_pop] .overlay span{text-transform:uppercase}
-.player[data-style=bold_pop] .overlay b{font-weight:inherit;color:#ffe500;display:inline-block;transform:scale(1.08)}
-.player[data-style=yellow] .overlay span{color:#ffe500}
-.player[data-style=boxed] .overlay span{-webkit-text-stroke:0;background:rgba(0,0,0,.62);padding:.1em .3em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
-.player[data-style=minimal] .overlay span{-webkit-text-stroke-width:calc(var(--capfs,6cqw) * .04);text-shadow:0 1px 3px rgba(0,0,0,.6)}
-.stylebar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s4)}
+.capl{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+/* Template gallery */
+.stylebar{display:flex;flex-direction:column;gap:var(--s4)}
+.tpl-head{display:flex;align-items:baseline;gap:var(--s3);flex-wrap:wrap}
+.tpl-row{display:grid;grid-auto-flow:column;grid-auto-columns:112px;gap:var(--s3);overflow-x:auto;padding:2px 2px var(--s2);scroll-snap-type:x proximity;scrollbar-width:thin}
+.tpl-tile{display:flex;flex-direction:column;gap:var(--s2);padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;scroll-snap-align:start}
+.tpl-stage{position:relative;width:112px;aspect-ratio:9/14;border-radius:14px;overflow:hidden;border:1px solid var(--border);
+  background:radial-gradient(70% 45% at 50% 30%,rgb(255 255 255 / .16),transparent 70%),linear-gradient(165deg,#43405a 0%,#2a3442 55%,#1b1f26 100%);
+  transition:transform .25s var(--ease),border-color .2s var(--ease),box-shadow .25s var(--ease)}
+.tpl-stage::before{content:"";position:absolute;left:50%;top:22%;width:46%;aspect-ratio:1;translate:-50% 0;border-radius:50% 50% 44% 44%;background:linear-gradient(#8a7468,#5c4a42);opacity:.55}
+.tpl-stage::after{content:"";position:absolute;left:50%;top:58%;width:84%;height:50%;translate:-50% 0;border-radius:44% 44% 0 0;background:linear-gradient(#3d4f66,#26313f);opacity:.8}
+.tpl-stage .capl{z-index:1}
+.tpl-tile:hover .tpl-stage{transform:translateY(-3px);border-color:var(--border-strong)}
+.tpl-tile[aria-checked=true] .tpl-stage{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 8px 24px rgb(205 251 80 / .14)}
+.tpl-tile:focus-visible{outline:none}
+.tpl-tile:focus-visible .tpl-stage{box-shadow:0 0 0 2px var(--accent)}
+.tpl-name{font-size:13px;font-weight:700;padding:0 2px}
+.tpl-tile[aria-checked=true] .tpl-name{color:var(--accent-ink)}
+.tpl-opts{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s5)}
+.swatches{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.swatch{width:26px;height:26px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px var(--border-strong);cursor:pointer;padding:0;transition:transform .15s var(--ease)}
+.swatch:hover{transform:scale(1.12)}
+.swatch[aria-pressed=true]{box-shadow:0 0 0 2px var(--accent)}
+.swatch.custom{position:relative;overflow:hidden;background:conic-gradient(#ff4d6d,#ffe81f,#43ff6e,#1e8deb,#5b6cff,#ff4d6d)}
+.swatch.custom input{position:absolute;inset:-8px;opacity:0;cursor:pointer}
+.font-btn{display:inline-flex;align-items:center;gap:var(--s2);min-height:36px;max-width:220px;padding:0 var(--s3) 0 var(--s4);border:1px solid var(--border);border-radius:999px;background:var(--field);font-size:15px;cursor:pointer;transition:border-color .2s var(--ease)}
+.font-btn:hover{border-color:var(--border-strong)}
+.font-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.font-btn svg{flex:none;color:var(--muted)}
+.learn.font-dlg{width:min(920px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px))}
+.font-tools{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s3);align-items:center;padding:var(--s4) var(--s5) var(--s3);border-bottom:1px solid var(--border)}
+.font-tools .field{flex:1 1 220px}
+.chips{display:flex;flex-wrap:wrap;gap:var(--s1)}
+.chips button{min-height:32px;padding:0 var(--s3);border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
+.chips button:hover{color:var(--text);border-color:var(--border-strong)}
+.chips button[aria-pressed=true]{background:var(--accent-strong);border-color:transparent;color:var(--on-accent)}
+.font-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));align-content:start;gap:var(--s3);padding:var(--s4) var(--s5) var(--s5)}
+.font-tile{display:flex;flex-direction:column;gap:var(--s2);padding:var(--s2);border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--field);text-align:left;cursor:pointer;transition:border-color .2s var(--ease),transform .2s var(--ease)}
+.font-tile:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+.font-tile[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.font-tile[aria-disabled=true]{opacity:.4;cursor:not-allowed;transform:none}
+.font-tile .sample{display:grid;place-items:center;height:76px;padding:0 var(--s2);border-radius:8px;background:linear-gradient(135deg,#2b2440,#14301f);overflow:hidden;color:#fff;font-size:calc(21px * var(--k,1));line-height:1.2;text-align:center;-webkit-text-stroke:2.4px #000;paint-order:stroke fill;overflow-wrap:anywhere}
+.font-tile .meta{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);padding:0 var(--s1);font-size:13px;font-weight:600}
+.font-tile .tag{flex:none;padding:1px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;font-weight:600}
+@media (max-width:520px){.font-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);padding:var(--s3)}.font-tile .sample{height:64px;font-size:calc(16px * var(--k,1));-webkit-text-stroke-width:2px}.font-tools{padding:var(--s3)}}
+.font-empty{grid-column:1/-1;padding:var(--s6) 0;text-align:center}
 .seg{display:inline-flex;flex-wrap:wrap;gap:var(--s1);padding:3px;border:1px solid var(--border);border-radius:999px;background:var(--field)}
 .seg button{min-height:30px;padding:0 var(--s3);border:0;border-radius:999px;background:transparent;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
 .seg button:hover{color:var(--text);background:var(--field-hover)}
@@ -279,7 +305,6 @@ input[type=range]{width:100%;margin:0;accent-color:var(--accent);cursor:pointer}
 .cue:hover .icon-btn,.cue:focus-within .icon-btn,.cue .icon-btn:focus-visible{opacity:1}
 @media (hover:none){.cue .icon-btn{opacity:1}}
 .txt input{width:100%;min-height:32px;padding:var(--s1) var(--s2);margin-left:calc(-1 * var(--s2));background:var(--panel);border:1px solid var(--accent);border-radius:6px;outline:none}
-.no-match{padding:var(--s5);text-align:center;color:var(--muted)}
 
 .keys{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);font-size:13px;color:var(--muted)}
 kbd{display:inline-block;min-width:24px;padding:0 var(--s1);border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:6px;font:500 13px var(--mono);text-align:center;color:var(--text)}
@@ -446,12 +471,14 @@ kbd{display:inline-block;min-width:24px;padding:0 var(--s1);border:1px solid var
       </div>
 
       <div class="stylebar span" id="stylebar" hidden>
-        <div class="grp"><span class="lbl" id="l-style">Style</span>
-          <div class="seg" role="group" aria-labelledby="l-style" data-opt="style">
-            <button type="button" data-v="clean">Clean</button><button type="button" data-v="bold_pop">Bold Pop</button>
-            <button type="button" data-v="boxed">Boxed</button><button type="button" data-v="yellow">Yellow</button>
-            <button type="button" data-v="minimal">Minimal</button>
-          </div></div>
+        <div class="tpl-head"><span class="lbl" id="l-tpl">Template</span><span class="hint" id="tplDesc"></span></div>
+        <div class="tpl-row" id="tplRow" role="radiogroup" aria-labelledby="l-tpl"></div>
+        <div class="tpl-opts">
+        <div class="grp" id="accentGrp"><span class="lbl" id="l-accent">Colour</span>
+          <div class="swatches" id="swatches" role="group" aria-labelledby="l-accent"></div></div>
+        <div class="grp"><span class="lbl" id="l-font">Font</span>
+          <button type="button" class="font-btn" id="fontBtn" aria-labelledby="l-font fontName" aria-haspopup="dialog">
+            <span id="fontName">Poppins</span><svg width="16" height="16" aria-hidden="true"><use href="#i-chev"/></svg></button></div>
         <div class="grp"><span class="lbl" id="l-pos">Position</span>
           <div class="seg" role="group" aria-labelledby="l-pos" data-opt="position">
             <button type="button" data-v="top">Top</button><button type="button" data-v="middle">Middle</button><button type="button" data-v="bottom">Bottom</button>
@@ -460,12 +487,13 @@ kbd{display:inline-block;min-width:24px;padding:0 var(--s1);border:1px solid var
           <div class="seg" role="group" aria-labelledby="l-size" data-opt="size">
             <button type="button" data-v="small">S</button><button type="button" data-v="medium">M</button><button type="button" data-v="large">L</button>
           </div></div>
+        </div>
       </div>
 
-      <div class="media" id="media">
+      <div class="media">
         <div class="player" id="player">
           <video id="video" controls playsinline preload="metadata"></video>
-          <div class="overlay" aria-hidden="true"><span id="overlayText"></span></div>
+          <div class="capl" id="capLayer" aria-hidden="true"></div>
         </div>
         <p class="hint" id="previewNote" hidden style="margin-top:var(--s3)">This format can't be previewed in the browser, but subtitles will still be generated.</p>
       </div>
@@ -529,10 +557,29 @@ kbd{display:inline-block;min-width:24px;padding:0 var(--s1);border:1px solid var
   <div class="learn-list" id="learnList"></div>
 </dialog>
 
+<dialog class="learn font-dlg" id="fontDlg" aria-labelledby="fontTitle">
+  <div class="learn-head">
+    <div>
+      <h2 id="fontTitle">Fonts</h2>
+      <p class="hint" id="fontSummary"></p>
+    </div>
+    <button type="button" class="icon-btn" id="fontClose" aria-label="Close"><svg width="16" height="16" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="font-tools">
+    <div class="field"><svg width="16" height="16" aria-hidden="true"><use href="#i-search"/></svg><input id="fontFind" type="search" placeholder="Search fonts" aria-label="Search fonts" autocomplete="off" spellcheck="false"></div>
+    <div class="chips" id="fontChips" role="group" aria-label="Font groups"></div>
+  </div>
+  <div class="font-grid" id="fontGrid"></div>
+</dialog>
+
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
+<script src="/static/captions.js"></script>
 <script>
 const CTX = {{ {"app_name": app_name, "local": local_mode, "payments": payments, "demo": demo_mode} | tojson }};
+const FONTS = {{ fonts | tojson }};
+const LOOKS = {{ looks | tojson }};
+CaptionLook.init({fonts: FONTS, looks: LOOKS});
 const $ = id => document.getElementById(id);
 const form = $('form'), fileIn = $('file'), video = $('video'), player = $('player');
 
@@ -802,7 +849,7 @@ function showPending(title, hint){
 function resetResults(){
   S.cues = []; S.original = []; S.edited.clear(); S.current = -1; S.editing = -1; S.language = null;
   S.resultJob = null; resetExport();
-  $('cues').innerHTML = ''; $('overlayText').textContent = '';
+  $('cues').innerHTML = ''; $('capLayer').replaceChildren(); capState = '';
   $('find').value = ''; $('replace').value = '';
   refreshTrack();
 }
@@ -810,7 +857,7 @@ function loadCues(cues, language){
   S.cues = cues.map(c => ({...c})); S.original = cues.map(c => c.text); S.language = language;
   $('pending').hidden = true; $('result').hidden = false; $('toolbar').hidden = false;
   $('stylebar').hidden = !S.playable; $('exportBtn').hidden = !S.playable;
-  renderCues(); refreshTrack(); updateStatus(); syncFooter();
+  renderCues(); refreshTrack(); updateStatus(); syncFooter(); applyCaptionStyle();
   toast(`${cues.length} subtitles ready`);
 }
 function updateStatus(){
@@ -1039,46 +1086,190 @@ function scrollToRow(row){
   if (top < box.scrollTop || bottom > box.scrollTop + box.clientHeight)
     box.scrollTo({top: Math.max(0, top - box.clientHeight / 3), behavior: reducedMotion ? 'auto' : 'smooth'});
 }
-function updateOverlay(){
-  const i = S.playable ? cueAt(video.currentTime) : -1, el = $('overlayText');
-  if (i < 0){ el.textContent = ''; return; }
-  const c = S.cues[i];
-  if (CAP.style !== 'bold_pop'){ el.textContent = c.text; return; }
-  // Word-by-word highlight, timed the same way render.py does it.
-  const words = c.text.split(/\s+/).filter(Boolean), t = video.currentTime;
-  let active = words.length - 1;
-  if (c.wt && c.wt.length === words.length){
-    for (let k = 0; k < words.length; k++){ if (t < (k + 1 < words.length ? c.wt[k + 1][0] : c.end)){ active = k; break; } }
-  } else {
-    const total = words.reduce((n, w) => n + w.length, 0) || 1;
-    let acc = c.start;
-    for (let k = 0; k < words.length; k++){ acc += (c.end - c.start) * words[k].length / total; if (t < acc){ active = k; break; } }
-  }
-  el.replaceChildren(...words.flatMap((w, k) => {
-    const n = k === active ? Object.assign(document.createElement('b'), {textContent: w}) : document.createTextNode(w);
-    return k ? [document.createTextNode(' '), n] : [n];
-  }));
+// ---------- caption templates (preview + burned-in export) ----------
+const SIZE = {small: .8, medium: 1, large: 1.25};
+const OLD_STYLES = {clean: 'classic', bold_pop: 'beast', boxed: 'notebook', yellow: 'hustle', minimal: 'luxe'};
+const CAP = Object.assign({template: LOOKS.default, accent: null, font: null, position: 'bottom', size: 'medium'}, store.get('caption') || {});
+if (CAP.style){ CAP.template = OLD_STYLES[CAP.style] || LOOKS.default; delete CAP.style; }
+if (!LOOKS.templates[CAP.template]) CAP.template = LOOKS.default;
+const currentTpl = () => CaptionLook.resolve(CAP.template, CAP);
+let capState = '', capPage = '';
+function updateOverlay(force){
+  const layer = $('capLayer'), i = S.playable ? cueAt(video.currentTime) : -1;
+  const st = i >= 0 ? CaptionLook.at(S.cues[i], video.currentTime, currentTpl()) : null;
+  if (!st){ if (capState){ layer.replaceChildren(); capState = capPage = ''; } return; }
+  const key = `${i}|${st.key}|${S.cues[i].text}`;
+  if (key === capState && !force) return;
+  const page = `${i}|${st.pageKey}|${S.cues[i].text}`, newPage = page !== capPage;
+  capState = key; capPage = page;
+  const tpl = currentTpl(), w = player.clientWidth, h = player.clientHeight;
+  CaptionLook.draw(layer, {tpl, words: st.page, active: st.active, position: CAP.position, newPage: newPage && !force,
+                           em: CaptionLook.emFor(w, h, tpl, SIZE[CAP.size]), landscape: w > h});
 }
-
-// ---------- caption style (preview + burned-in export) ----------
-const CAP = Object.assign({style: 'clean', position: 'bottom', size: 'medium'}, store.get('caption') || {});
-const CAP_SCALE = {clean: 1, bold_pop: 1.15, boxed: .95, yellow: 1.05, minimal: .8}, CAP_SIZE = {small: .8, medium: 1, large: 1.25};
+function saveCap(){ store.set('caption', CAP); applyCaptionStyle(); }
 function applyCaptionStyle(){
-  player.dataset.style = CAP.style; player.dataset.pos = CAP.position;
-  const ar = video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : 16 / 9;
-  // render.py sizes text from the video's short side; the player is sized by its width (cqw).
-  const shortSide = ar < 1 ? 100 : 100 / ar;
-  player.style.setProperty('--capfs', (shortSide * (ar < 1 ? .075 : .06) * CAP_SCALE[CAP.style] * CAP_SIZE[CAP.size]).toFixed(2) + 'cqw');
-  player.style.setProperty('--cap-bottom', ar < 1 ? '20%' : '8%');
+  const tpl = LOOKS.templates[CAP.template], f = fontOf(CAP.font);
+  $('fontName').textContent = f ? f.label : `${fontOf(tpl.font).label} (template)`;
+  $('fontName').style.fontFamily = `'F-${f ? f.key : tpl.font}', Manrope, sans-serif`;
+  CaptionLook.loadFont(f ? f.key : tpl.font);
+  $('tplDesc').textContent = tpl.desc;
+  $('tplRow').querySelectorAll('.tpl-tile').forEach(b => {
+    const on = b.dataset.key === CAP.template;
+    b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1;
+  });
+  renderSwatches();
   document.querySelectorAll('.seg').forEach(g => g.querySelectorAll('button').forEach(b =>
     b.setAttribute('aria-pressed', String(CAP[g.dataset.opt] === b.dataset.v))));
-  updateOverlay();
+  capState = ''; updateOverlay(true);
 }
 document.querySelectorAll('.seg').forEach(g => g.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  CAP[g.dataset.opt] = b.dataset.v; store.set('caption', CAP); applyCaptionStyle();
+  CAP[g.dataset.opt] = b.dataset.v; saveCap();
 }));
-video.addEventListener('loadedmetadata', applyCaptionStyle);
+video.addEventListener('loadedmetadata', () => applyCaptionStyle());
+window.addEventListener('resize', () => updateOverlay(true));
+
+// Gallery: every tile plays a live sample of its template.
+const SAMPLE = 'Aaj hum baat karenge 90% creators ki sabse badi galti'.split(' ');
+const SAMPLE_CUE = {start: 0, end: SAMPLE.length * .42, text: SAMPLE.join(' '), wt: SAMPLE.map((_, k) => [k * .42, k * .42 + .38])};
+$('tplRow').replaceChildren(...LOOKS.order.map(key => [key, LOOKS.templates[key]]).map(([key, t]) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'tpl-tile'; b.dataset.key = key; b.setAttribute('role', 'radio');
+  b.setAttribute('aria-label', `${t.name}: ${t.desc}`);
+  b.innerHTML = '<span class="tpl-stage"><span class="capl"></span></span><span class="tpl-name"></span>';
+  b.querySelector('.tpl-name').textContent = t.name;
+  return b;
+}));
+$('tplRow').onclick = e => {
+  const b = e.target.closest('.tpl-tile'); if (!b) return;
+  if (CAP.template !== b.dataset.key){ CAP.template = b.dataset.key; CAP.accent = null; saveCap(); }
+};
+$('tplRow').onkeydown = e => {
+  if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  const tiles = [...$('tplRow').children], i = tiles.findIndex(b => b.dataset.key === CAP.template);
+  const next = tiles[(i + (e.key === 'ArrowRight' ? 1 : -1) + tiles.length) % tiles.length];
+  e.preventDefault(); next.click(); next.focus();
+};
+const tileState = new Map();
+function animateTiles(){
+  if (document.hidden || $('stylebar').hidden) return;
+  const t = (performance.now() / 1000) % (SAMPLE_CUE.end + .8);
+  $('tplRow').querySelectorAll('.tpl-tile').forEach(b => {
+    const key = b.dataset.key, tpl = CaptionLook.resolve(key, key === CAP.template ? CAP : {});
+    tpl.words = Math.min(tpl.words || 4, 4);   // thumbnails are small: fewer words, bigger text
+    const time = Math.min(t, SAMPLE_CUE.end - .01), st = CaptionLook.at(SAMPLE_CUE, time, tpl);
+    const sig = `${st.key}|${key === CAP.template ? CAP.accent + CAP.font : ''}`, prev = tileState.get(key) || '';
+    if (sig === prev) return;
+    tileState.set(key, sig);
+    const layer = b.querySelector('.capl'), w = layer.clientWidth, h = layer.clientHeight;
+    CaptionLook.draw(layer, {tpl, words: st.page, active: st.active, position: 'bottom',
+                             newPage: prev.split(':')[0] !== st.key.split(':')[0], em: Math.max(CaptionLook.emFor(w, h, tpl) * 1.5, 8.5)});
+  });
+}
+setInterval(animateTiles, 90);
+
+// Accent colour: the template's own colour first, then presets, then any colour.
+const PRESETS = ['#A6F24D', '#FFE81F', '#F7931E', '#FF4D6D', '#5B6CFF', '#1E8DEB', '#43FF6E', '#FFFFFF'];
+function accentDefault(tpl){
+  const f = tpl.accent; if (!f) return null;
+  const v = f.includes('.') ? (tpl[f.split('.')[0]] || {})[f.split('.')[1]] : tpl[f];
+  return v ? v.slice(0, 7).toUpperCase() : null;
+}
+function renderSwatches(){
+  const tpl = LOOKS.templates[CAP.template], def = accentDefault(tpl);
+  $('accentGrp').hidden = !def;
+  if (!def) return;
+  const cur = (CAP.accent || def).toUpperCase();
+  const list = [def, ...PRESETS.filter(c => c !== def)].slice(0, 8);
+  const btns = list.map((c, k) => {
+    const b = Object.assign(document.createElement('button'), {type: 'button', className: 'swatch', title: k ? c : `${c} (template default)`});
+    b.style.background = c; b.dataset.c = c; b.setAttribute('aria-label', k ? `Colour ${c}` : 'Template colour');
+    b.setAttribute('aria-pressed', String(c === cur));
+    return b;
+  });
+  const custom = Object.assign(document.createElement('label'), {className: 'swatch custom', title: 'Any colour'});
+  const inp = Object.assign(document.createElement('input'), {type: 'color', value: cur.toLowerCase()});
+  inp.setAttribute('aria-label', 'Pick any colour');
+  inp.oninput = () => { CAP.accent = inp.value.toUpperCase(); store.set('caption', CAP); capState = ''; updateOverlay(true); tileState.clear(); };
+  inp.onchange = saveCap;
+  custom.setAttribute('aria-pressed', String(!list.includes(cur)));
+  custom.append(inp);
+  $('swatches').replaceChildren(...btns, custom);
+}
+$('swatches').onclick = e => {
+  const b = e.target.closest('button.swatch'); if (!b) return;
+  CAP.accent = b.dataset.c === accentDefault(LOOKS.templates[CAP.template]) ? null : b.dataset.c; saveCap(); tileState.clear();
+};
+
+// ---------- font library ----------
+const FONT_BY_KEY = Object.fromEntries(FONTS.fonts.map(f => [f.key, f]));
+const fontOf = k => FONT_BY_KEY[k] || null;
+const DEVA = /[\u0900-\u097F]/;
+const hindiCaptions = () => S.cues.some(c => DEVA.test(c.text));
+// Same rule as render.py: a font without Hindi letters falls back to the style's font for Hindi captions.
+const loadFont = f => CaptionLook.loadFont(f.key);
+let fontFilter = 'all';
+function fontSample(){
+  const c = S.cues.find(c => c.text.trim());
+  const words = c ? c.text.trim().split(/\s+/).slice(0, 3).join(' ') : 'Aaj ka video';
+  return LOOKS.templates[CAP.template].upper ? words.toUpperCase() : words;
+}
+const tileObserver = 'IntersectionObserver' in window ? new IntersectionObserver(entries => entries.forEach(e => {
+  if (e.isIntersecting){ loadFont(fontOf(e.target.dataset.key)); tileObserver.unobserve(e.target); }
+}), {root: $('fontGrid'), rootMargin: '200px'}) : null;
+function renderFonts(){
+  const q = $('fontFind').value.trim().toLowerCase(), hindi = hindiCaptions(), sample = fontSample();
+  $('fontSummary').textContent = `${FONTS.fonts.length} fonts, ${FONTS.fonts.filter(f => f.hindi).length} of them write Hindi. Free for commercial use.`;
+  const own = fontOf(LOOKS.templates[CAP.template].font);
+  const list = [{...own, key: '', fontKey: own.key, label: `${own.label} (template font)`},
+                ...FONTS.fonts].filter(f =>
+    (!q || f.label.toLowerCase().includes(q)) &&
+    (fontFilter === 'all' || (fontFilter === 'hindi_ok' ? f.hindi : f.group === fontFilter)));
+  const grid = $('fontGrid');
+  tileObserver?.disconnect();
+  grid.replaceChildren(...list.map(f => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'font-tile'; b.dataset.key = f.key;
+    b.setAttribute('aria-pressed', String((CAP.font || '') === f.key));
+    const blocked = hindi && !f.hindi;
+    if (blocked){ b.setAttribute('aria-disabled', 'true'); b.title = 'This font has English letters only, so it can\'t write these Hindi captions'; }
+    const sm = document.createElement('span'); sm.className = 'sample'; sm.textContent = sample;
+    sm.style.fontFamily = `'F-${f.fontKey || f.key}', sans-serif`;
+    sm.style.setProperty('--k', f.scale);
+    const meta = document.createElement('span'); meta.className = 'meta';
+    meta.append(Object.assign(document.createElement('span'), {textContent: f.label}));
+    if (f.hindi) meta.append(Object.assign(document.createElement('span'), {className: 'tag', textContent: 'हिंदी'}));
+    b.append(sm, meta);
+    if (!f.key) CaptionLook.loadFont(f.fontKey);
+    else if (tileObserver) tileObserver.observe(b); else loadFont(f);
+    return b;
+  }));
+  if (!list.length) grid.append(Object.assign(document.createElement('p'), {className: 'hint font-empty', textContent: 'No font matches that search.'}));
+}
+// "Hindi" lists every font that can write Hindi script, not only the ones designed for it.
+const {hindi: _h, ...FONT_GROUPS} = FONTS.groups;
+const FONT_CHIPS = {all: 'All', hindi_ok: 'Hindi', ...FONT_GROUPS};
+$('fontChips').replaceChildren(...Object.entries(FONT_CHIPS).map(([k, label]) => {
+  const b = Object.assign(document.createElement('button'), {type: 'button', textContent: label});
+  b.dataset.k = k; b.setAttribute('aria-pressed', String(k === fontFilter));
+  return b;
+}));
+$('fontChips').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  fontFilter = b.dataset.k;
+  $('fontChips').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  renderFonts();
+};
+$('fontFind').oninput = renderFonts;
+$('fontGrid').onclick = e => {
+  const b = e.target.closest('.font-tile'); if (!b) return;
+  if (b.getAttribute('aria-disabled') === 'true') return toast('This font has English letters only. Pick one marked हिंदी for Hindi captions.');
+  CAP.font = b.dataset.key || null; store.set('caption', CAP); applyCaptionStyle();
+  $('fontDlg').close();
+};
+$('fontBtn').onclick = () => { $('fontFind').value = ''; renderFonts(); $('fontDlg').showModal(); $('fontFind').focus(); };
+$('fontClose').onclick = () => $('fontDlg').close();
+$('fontDlg').addEventListener('click', e => { if (e.target === $('fontDlg')) $('fontDlg').close(); });
 applyCaptionStyle();
 
 let exportPoll = null;
@@ -1159,7 +1350,7 @@ async function openPlans(){
     const ul = document.createElement('ul');
     [`${p.minutes} minutes of video a month`, `Videos up to ${p.max_seconds / 60} min long`,
      p.watermark ? 'Small watermark on video exports' : 'No watermark',
-     'All caption styles, SRT and VTT', 'Learns your words as you edit'].forEach(t => {
+     'All 11 caption templates and 74 fonts, SRT and VTT', 'Learns your words as you edit'].forEach(t => {
       const li = document.createElement('li'); li.textContent = t; ul.append(li); });
     const btn = document.createElement('button'); btn.type = 'button';
     if (ACC.plan === key){ btn.className = 'btn'; btn.textContent = key === 'free' ? 'Current plan' : 'Add 30 days'; btn.disabled = key === 'free'; }
@@ -1235,7 +1426,7 @@ function syncToVideo(){
   if (!S.cues.length) return updateOverlay();
   const i = cueAt(video.currentTime);
   if (i >= 0 && i !== S.current) setCurrent(i);
-  else if (i < 0) updateOverlay();
+  updateOverlay();   // word-level: which word is being spoken changes within a subtitle
 }
 function seekTo(i, play){
   const c = S.cues[i]; if (!c) return;

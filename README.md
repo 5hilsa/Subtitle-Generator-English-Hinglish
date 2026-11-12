@@ -4,7 +4,9 @@ Hindi / Hinglish captions for short videos. Runs locally on **macOS and Windows*
 
 - Transcribes speech with Whisper (large-v3-turbo).
 - Hinglish mode rewrites the text in Roman Hindi with Claude and learns from your edits.
-- Exports SRT / VTT, or an MP4 with styled captions burned in (Clean, Bold Pop, Boxed, Yellow, Minimal).
+- Exports SRT / VTT, or an MP4 with captions burned in using one of 11 premium templates
+  (Hustle, Notebook, Bubble, Punch, Tag, Luxe, Beast, Mumbai, Podcast, Highlight, Classic):
+  word-by-word highlights, boxes, glows and pop-ins, with your own colour and any of 74 fonts.
 
 ## Start it
 
@@ -74,7 +76,9 @@ per GPU. For more traffic, run more GPU servers behind a queue: that's the next 
 | --- | --- |
 | `app.py` | Web server and job pipeline |
 | `transcriber.py` | Picks MLX or faster-whisper and runs speech-to-text |
-| `render.py` | Burns caption styles into the video (ffmpeg + libass) |
+| `looks.py` | The caption templates, and the page/line/key-word rules shared with the preview |
+| `render.py` | Lays out every word (HarfBuzz) and burns the template into the video (ffmpeg + libass) |
+| `static/captions.js` | The live template preview in the browser, matching the export |
 | `hinglish.py`, `ai_correct.py` | Devanagari → Hinglish, then Claude cleanup |
 | `feedback.py` | Learns word fixes from each user's edits (`data/feedback/`) |
 | `config.py`, `.env.example` | Settings; local mode vs website mode |
@@ -82,6 +86,7 @@ per GPU. For more traffic, run more GPU servers behind a queue: that's the next 
 | `auth.py`, `billing.py` | Google sign-in; Razorpay orders, verification and webhook |
 | `templates/landing.html` | Public home page with pricing (website mode) |
 | `Dockerfile` | Cloud GPU image (CUDA) |
-| `fonts/` | Poppins (SIL Open Font License), used for burned-in captions |
+| `typefaces.py` | The caption font library: names, groups, size corrections, Hindi support |
+| `fonts/` | The 74 caption fonts from Google Fonts (SIL Open Font License or Apache 2.0, both fine for commercial use); each licence is in `fonts/licenses/` |
 
 Uploaded videos and exports are kept for 6 hours so you can re-export, then deleted.
