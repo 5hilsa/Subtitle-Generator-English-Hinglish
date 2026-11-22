@@ -1,3 +1,10 @@
-flask==3.1.3
-mlx-whisper==0.4.3
-anthropic==0.125.0
+flask>=3.0
+anthropic>=0.40
+numpy
+imageio-ffmpeg>=0.5        # bundled ffmpeg with libass, for every OS
+uharfbuzz>=0.39            # measures words so caption boxes and highlights line up exactly
+pillow>=10                 # reads pictures for "Match from image" in the font picker
+faster-whisper>=1.1        # speech-to-text on Windows, Linux and Intel Macs (CPU or NVIDIA GPU)
+mlx-whisper>=0.4; sys_platform == "darwin" and platform_machine == "arm64"   # Apple Silicon GPU
+google-auth>=2.30             # verifies Google sign-in tokens (website mode)
+requests>=2.31                # Razorpay API and Google key fetching

@@ -1,11 +1,24 @@
 .venv/
 __pycache__/
+*.pyc
 .DS_Store
+
+# Private: user accounts, payments, learned dictionaries, session secret, API keys
+data/
+.env
+
+# Media and generated files
 uploads/
 outputs/
+renders/
+feedback/
 *.mp4
 *.mov
 *.mkv
 *.wav
 *.mp3
 *.m4a
+
+# Fonts users added from Google Fonts (kept in data/fonts, copied here at start-up)
+fonts/gf-*
+fonts/up-*
