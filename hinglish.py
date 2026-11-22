@@ -7,6 +7,8 @@ schwa-deletion rules rather than a strict academic scheme.
 """
 import re
 
+import hinglish_words
+
 CONS = {
     "क": "k", "ख": "kh", "ग": "g", "घ": "gh", "ङ": "n",
     "च": "ch", "छ": "chh", "ज": "j", "झ": "jh", "ञ": "n",
@@ -16,9 +18,9 @@ CONS = {
     "य": "y", "र": "r", "ल": "l", "व": "v", "ळ": "l",
     "श": "sh", "ष": "sh", "स": "s", "ह": "h",
     # precomposed nukta letters
-    "क़": "q", "ख़": "kh", "ग़": "g", "ज़": "z", "ड़": "r", "ढ़": "rh", "फ़": "f", "य़": "y",
+    "क़": "q", "ख़": "kh", "ग़": "g", "ज़": "z", "ड़": "d", "ढ़": "dh", "फ़": "f", "य़": "y",
 }
-NUKTA = {"क": "q", "ख": "kh", "ग": "g", "ज": "z", "ड": "r", "ढ": "rh", "फ": "f", "य": "y"}
+NUKTA = {"क": "q", "ख": "kh", "ग": "g", "ज": "z", "ड": "d", "ढ": "dh", "फ": "f", "य": "y"}
 VOWELS = {
     "अ": "a", "आ": "aa", "इ": "i", "ई": "ee", "उ": "u", "ऊ": "oo", "ऋ": "ri",
     "ए": "e", "ऐ": "ai", "ओ": "o", "औ": "au", "ऑ": "o", "ऍ": "e",
@@ -32,13 +34,20 @@ NASALS = {"ं": "n", "ँ": "n"}
 OTHER = {"ः": "h", "।": ".", "॥": ".", "ॐ": "om"}
 DIGITS = {chr(0x0966 + i): str(i) for i in range(10)}
 
-DEVANAGARI = re.compile(r"[ऀ-ॿ]+")
+DEVANAGARI = re.compile(r"[ऀ-ॣ०-ॿ]+")      # words; the danda । is punctuation
 
-# Very common words whose everyday spelling doesn't follow the rules.
-COMMON = {
-    "हम": "hum", "तुम": "tum", "यह": "yeh", "वह": "woh", "कुछ": "kuch",
-    "एप": "app", "ऐप": "app", "और": "aur", "है": "hai", "हैं": "hain",
-}
+
+
+def _key(word):
+    """Spelling-insensitive lookup key: Whisper is loose with nukta, chandrabindu and ॉ."""
+    return word.replace("\u093c", "").replace("ँ", "ं").replace("ॉ", "ो")
+
+
+# Words whose everyday spelling doesn't follow the rules (see hinglish_words.py).
+COMMON = {_key(dev): rom for dev, rom in hinglish_words.COMMON.items()}
+for eng, spellings in hinglish_words.ENGLISH.items():
+    for dev in spellings.split():
+        COMMON.setdefault(_key(dev), eng)
 
 
 def _syllables(word):
@@ -83,9 +92,14 @@ def _syllables(word):
     return out
 
 
-def _word(word):
-    if word in COMMON:
-        return COMMON[word]
+def _word(word, lists=True):
+    k = _key(word)
+    if lists and k in COMMON:
+        return COMMON[k]
+    for tail in ("्स", "स") if lists else ():           # plural of a listed English word: टास्क्स
+        if k.endswith(tail) and k[:-len(tail)] in COMMON and COMMON[k[:-len(tail)]].isascii() \
+                and COMMON[k[:-len(tail)]] in hinglish_words.ENGLISH:
+            return COMMON[k[:-len(tail)]] + "s"
     syls = _syllables(word)
     letters = [s for s in syls if not s.get("raw")]
     if not letters:
@@ -120,12 +134,16 @@ def _word(word):
         elif s["vowel"] == "ee" and s["nasal"] and s is end:
             s["vowel"] = "i"                         # nahin
 
-    return "".join("".join(s["cons"]) + s["vowel"] + s["nasal"] for s in syls)
+    out = "".join("".join(s["cons"]) + s["vowel"] + s["nasal"] for s in syls)
+    out = re.sub(r"(?<=[^aeiou]i)e$", "ye", out)       # -इए endings: liye, chaliye, dekhiye
+    out = re.sub(r"(?<=aa)e", "ye", out)                 # जाएंगे, आएगा: jaayenge, aayega
+    return re.sub(r"(?<=\w)oon?g([aei])$", r"ung\1", out)  # करूंगा, करूगा: karunga
 
 
-def to_hinglish(text):
-    """Transliterate every Devanagari run in text; leave Latin/punctuation as is."""
-    return DEVANAGARI.sub(lambda m: _word(m.group(0)), text)
+def to_hinglish(text, lists=True):
+    """Transliterate every Devanagari run in text; leave Latin/punctuation as is.
+    lists=False spells every word out by the rules alone, ignoring hinglish_words."""
+    return DEVANAGARI.sub(lambda m: _word(m.group(0), lists), text).replace("।", ".").replace("॥", ".")
 
 
 if __name__ == "__main__":

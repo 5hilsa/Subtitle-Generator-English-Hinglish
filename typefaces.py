@@ -9,10 +9,23 @@ static TTFs with Latin and, where the font has it, Devanagari.
   name   the font's full name inside the file (what libass matches on)
   scale  size correction so every font looks about as big as Poppins
   hindi  True if it can draw Devanagari (Hindi script)
+
+Users can add more Google Fonts with "Match from image" (fontmatch.py). Those are
+kept in DATA_DIR/fonts with added.json, and copied into ./fonts at start-up so the
+browser and libass find them like any other.
 """
+import json, os, re, shutil, threading
+
+import config
+
+FONTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+ADDED_DIR = os.path.join(config.DATA_DIR, "fonts")
+ADDED_INDEX = os.path.join(ADDED_DIR, "added.json")
+WEIGHT_NAMES = {100: "Thin", 200: "ExtraLight", 300: "Light", 400: "Regular", 500: "Medium",
+                600: "SemiBold", 700: "Bold", 800: "ExtraBold", 900: "Black"}
 
 GROUPS = {"bold": "Bold & clean", "fun": "Fun & display", "hand": "Handwritten",
-          "serif": "Serif & elegant", "hindi": "Made for Hindi"}
+          "serif": "Serif & elegant", "hindi": "Made for Hindi", "added": "Added"}
 
 #  key: (label, name, file, group, scale, hindi)
 FONTS = {
@@ -93,14 +106,96 @@ FONTS = {
 }
 
 
+def _load_added():
+    """{key: (label, name, file, group, scale, hindi, owner)}; owner is None for Google Fonts
+    (shared by everyone) or the user id for a font file someone uploaded (theirs only)."""
+    try:
+        with open(ADDED_INDEX, encoding="utf-8") as f:
+            added = {k: tuple(v) + (None,) * (7 - len(v)) for k, v in json.load(f).items()}
+    except (OSError, ValueError):
+        return {}
+    for key, v in list(added.items()):
+        dst = os.path.join(FONTS_DIR, v[2])
+        if not os.path.isfile(dst):
+            try:
+                shutil.copyfile(os.path.join(ADDED_DIR, v[2]), dst)
+            except OSError:
+                del added[key]                   # its file is gone
+    return added
+
+
+ADDED = _load_added()
+_lock = threading.Lock()
+
+
 def get(key):
     """Font entry as a dict, or None for unknown keys (= the template's own font)."""
-    if key not in FONTS:
+    entry = FONTS.get(key) or ADDED.get(key)
+    if not entry and key and key.startswith(("gf_", "up_")):   # added in another server process
+        ADDED.update(_load_added())
+        entry = ADDED.get(key)
+    if not entry:
         return None
-    label, name, file, group, scale, hindi = FONTS[key]
+    label, name, file, group, scale, hindi = entry[:6]
     return {"key": key, "label": label, "name": name, "file": file, "group": group, "scale": scale, "hindi": hindi}
 
 
-def catalog():
-    """For the browser: everything the font picker needs."""
-    return {"groups": GROUPS, "fonts": [get(k) for k in FONTS]}
+def catalog(uid=None):
+    """For the browser: everything the font picker needs (with this user's uploaded fonts)."""
+    added = [k for k, v in ADDED.items() if v[6] is None or v[6] == uid]
+    return {"groups": GROUPS, "fonts": [get(k) for k in list(FONTS) + added]}
+
+
+def _describe(path):
+    """(full name, scale, hindi) of a font file, measured the same way as the built-in fonts."""
+    import uharfbuzz as hb
+    face = hb.Face(hb.Blob.from_file_path(path))
+    font = hb.Font(face)
+
+    def cap(f, upem):
+        g = f.get_nominal_glyph(ord("H"))
+        ext = f.get_glyph_extents(g) if g else None
+        return -ext.height / upem if ext and ext.height else 0.7
+    poppins = hb.Face(hb.Blob.from_file_path(os.path.join(FONTS_DIR, FONTS["poppins"][2])))
+    scale = round(min(1.3, max(0.75, cap(hb.Font(poppins), poppins.upem) / cap(font, face.upem))), 2)
+    hindi = all(font.get_nominal_glyph(c) for c in (0x0915, 0x093E, 0x094D, 0x0939))
+    return face.get_name(4) or face.get_name(1), scale, hindi, face
+
+
+def _register(key, path, file, label, owner):
+    name, scale, hindi, _ = _describe(path)
+    with _lock:
+        os.makedirs(ADDED_DIR, exist_ok=True)
+        shutil.copyfile(path, os.path.join(ADDED_DIR, file))
+        shutil.copyfile(path, os.path.join(FONTS_DIR, file))
+        ADDED[key] = (label, name, file, "added", scale, hindi, owner)
+        with open(ADDED_INDEX, "w", encoding="utf-8") as f:
+            json.dump(ADDED, f, indent=1)
+    return get(key)
+
+
+def add(path, family, weight):
+    """Add a downloaded Google Fonts TTF to the library (for everyone); returns its entry."""
+    key = "gf_" + re.sub(r"[^a-z0-9]+", "_", family.lower()).strip("_") + f"_{weight}"
+    if key in FONTS or key in ADDED:
+        return get(key)
+    label = family + ("" if weight == 400 else f" {WEIGHT_NAMES.get(weight, weight)}")
+    return _register(key, path, f"gf-{re.sub(r'[^A-Za-z0-9]', '', family)}-{weight}.ttf", label, None)
+
+
+def upload(path, uid):
+    """Add a font file the user uploaded (a font they own). Only they see it, since the
+    licence of a bought font is theirs, not everyone's. Raises ValueError if it isn't a font."""
+    import hashlib
+    try:
+        name, _, _, face = _describe(path)
+    except Exception:
+        raise ValueError("That file isn't a font we can read. Use a .ttf or .otf file.")
+    if not face.upem or not name:
+        raise ValueError("That file isn't a font we can read. Use a .ttf or .otf file.")
+    digest = hashlib.sha1(open(path, "rb").read()).hexdigest()[:12]
+    key = f"up_{digest}_{re.sub(r'[^a-z0-9]+', '_', str(uid).lower())[:24]}"
+    if key in ADDED:
+        return get(key)
+    ext = ".otf" if open(path, "rb").read(4) == b"OTTO" else ".ttf"
+    return _register(key, path, f"up-{digest}{ext}", name, uid)

@@ -144,10 +144,12 @@ def _word_times(cue, words):
 
 # ---------------------------------------------------------------- layout
 
-def _layout(page_texts, tpl, W, H, base_em, position, visible=None):
+def _layout(page_texts, tpl, W, H, base_em, position, visible=None, ov=None):
     """Places one page of words. Returns a list of words with x/width/baseline/em/font/line.
     `visible`: only the first n words are on screen yet (reveal templates); lines are
-    centred on what is showing, the way the words appear one by one."""
+    centred on what is showing, the way the words appear one by one.
+    `ov`: per-word style overrides from the editor (font, size, upper, ...), one dict per word."""
+    ov = ov or [None] * len(page_texts)
     line2 = tpl.get("line2") or {}
     lines = looks.split_lines(page_texts, tpl)
     two_styled = tpl.get("split") == "half" and len(lines) == 2
@@ -158,20 +160,25 @@ def _layout(page_texts, tpl, W, H, base_em, position, visible=None):
         key = line2.get("font", tpl["font"]) if styled else tpl["font"]
         em = base_em * (line2.get("size", 1.0) if styled else 1.0)
         upper = line2.get("upper", tpl.get("upper")) if styled else tpl.get("upper")
-        x, row = 0.0, []
+        x, row, line_em = 0.0, [], em
         for j in idx:
-            text = page_texts[j].upper() if upper else page_texts[j]
-            f = _font_for(text, key)
+            o = ov[j] or {}
+            wem = em * o.get("size", 1.0)
+            up = o["upper"] if "upper" in o else upper
+            text = page_texts[j].upper() if up else page_texts[j]
+            f = _font_for(text, o.get("font") if typefaces.get(o.get("font")) else key)
             sp = 0.0 if DEVANAGARI.search(text) else spacing   # spacing breaks up Hindi letter joins
-            w = f.width(text, em, sp)
+            w = f.width(text, wem, sp) * o.get("scale", 1.0)
             if row:
                 x += f.width(" ", em) + spacing * em
                 # Room for the spoken word to grow without touching its neighbours.
                 x += em * (tpl.get("active_scale", 1.0) - 1.0) * 1.2
-            row.append({"i": j, "text": text, "font": f, "em": em, "x": x, "w": w, "line": li, "styled": styled, "sp": sp})
+            row.append({"i": j, "text": text, "font": f, "em": wem, "x": x, "w": w, "line": li, "styled": styled, "sp": sp,
+                        "ov": o})
             x += w
+            line_em = max(line_em, wem * o.get("scale", 1.0))
         widths.append(x)
-        heights.append(em * 1.18)
+        heights.append(line_em * 1.18)
         row_vis = [w for w in row if visible is None or w["i"] < visible]
         for w in row:
             w["vis_w"] = (row_vis[-1]["x"] + row_vis[-1]["w"]) if row_vis else 0.0
@@ -189,12 +196,22 @@ def _layout(page_texts, tpl, W, H, base_em, position, visible=None):
     block_h = sum(heights)
     portrait = H > W
     margin = H * (0.2 if portrait else 0.08)
-    top = {"bottom": H - margin - block_h, "top": margin, "middle": (H - block_h) / 2}[position]
+    custom = isinstance(position, tuple)      # (x, y): the caption's centre, dragged in the editor
+    if custom:
+        cx, cy = position
+        top = min(max(cy * H - block_h / 2, 0.0), max(H - block_h, 0.0))
+    else:
+        top = {"bottom": H - margin - block_h, "top": margin, "middle": (H - block_h) / 2}[position]
     align = tpl.get("align", "center")
+    block_w = max(widths) + 2 * pad
+    left = min(max(cx * W - block_w / 2, 0.0), max(W - block_w, 0.0)) if custom else 0.0
     words, y = [], top
     for row, lw, lh in zip(placed, widths, heights):
         shown = row[0]["vis_w"] if row and visible is not None else lw
-        x0 = W * 0.08 + pad if align == "left" else (W - shown) / 2
+        if custom:
+            x0 = left + pad if align == "left" else min(max(cx * W - shown / 2, pad), max(W - shown - pad, pad))
+        else:
+            x0 = W * 0.08 + pad if align == "left" else (W - shown) / 2
         baseline = y + lh * 0.8
         for w in row:
             w["x"] += x0
@@ -225,9 +242,14 @@ def build_ass(cues, width, height, template=looks.DEFAULT, position="bottom", si
         tpl["font"] = font
         if "font" in tpl["line2"]:
             tpl["line2"]["font"] = font
-    position = position if position in POSITIONS else "bottom"
+    if isinstance(position, (tuple, list)) and len(position) == 2:
+        position = (min(max(float(position[0]), 0.0), 1.0), min(max(float(position[1]), 0.0), 1.0))
+    elif position not in POSITIONS:
+        position = "bottom"
     portrait = height > width
-    base_em = min(width, height) * (0.075 if portrait else 0.06) * tpl["size"] * SIZES.get(size, 1.0) * scale
+    # size: "small" / "medium" / "large", or any multiplier picked with the editor's handle
+    mult = min(max(float(size), 0.3), 3.0) if isinstance(size, (int, float)) else SIZES.get(size, 1.0)
+    base_em = min(width, height) * (0.075 if portrait else 0.06) * tpl["size"] * mult * scale
 
     lines = [
         "[Script Info]", "ScriptType: v4.00+", f"PlayResX: {width}", f"PlayResY: {height}",
@@ -276,7 +298,7 @@ def build_ass(cues, width, height, template=looks.DEFAULT, position="bottom", si
     return "\n".join(lines) + "\n"
 
 
-def _page_events(placed, tpl, emph, active, s, e, first, block, W):
+def _page_events(placed, tpl, emph, active, s, e, first, block, W, layer=0):
     out = []
     line2 = tpl.get("line2") or {}
     pop = first and tpl.get("pop")
@@ -319,9 +341,14 @@ def _page_events(placed, tpl, emph, active, s, e, first, block, W):
         st = state(w["i"])
         if hide and st == "upcoming":
             continue
+        o = w.get("ov") or {}
+        if o.get("box"):                                 # a box behind just this word (set in the editor)
+            pad, dy = w["em"] * 0.16, o.get("dy", 0.0) * w["em"]
+            out.append(_box(w["x"] - pad, _cap_top(w) + dy, w["w"] + 2 * pad, _box_bottom(w) - _cap_top(w), w["em"] * 0.2,
+                            o["box"], s, e))
         styled = w["styled"]
         base = line2.get("color", tpl["color"]) if styled else tpl["color"]
-        col = base
+        col = o.get("color") or base
         if w["i"] in emph and st != "upcoming":
             col = emph[w["i"]]
         if st == "active" and tpl.get("active"):
@@ -332,20 +359,37 @@ def _page_events(placed, tpl, emph, active, s, e, first, block, W):
         if in_box and tpl.get("box_text"):
             col = tpl["box_text"]
         em, f = w["em"], w["font"]
-        cx, cy = w["x"] + w["w"] / 2, w["baseline"] - f.center_offset(em)
+        cx, cy = w["x"] + w["w"] / 2, w["baseline"] - f.center_offset(em) + o.get("dy", 0.0) * em
         c1, a1 = _colour(col)
+        k = o.get("scale", 1.0)                         # the word's own scale, under any animation
+        pct = lambda v: f"{v * k * 100:.0f}"
         tags = f"\\an5\\pos({cx:.1f},{cy:.1f})\\fn{f.name}\\fs{f.fs(em):.1f}"
         if w["sp"]:
             tags += f"\\fsp{w['sp'] * em:.1f}"
-        anim = ""
+        if o.get("bold"):
+            tags += "\\b1"
+        if o.get("italic"):
+            tags += "\\i1"
+        if o.get("rotate"):
+            tags += f"\\frz{-float(o['rotate']):.1f}"
+        anim = f"\\fscx{pct(1)}\\fscy{pct(1)}" if k != 1.0 else ""
         sc = tpl.get("active_scale") if st == "active" else None
-        if pop:
-            anim = "\\fscx70\\fscy70\\t(0,90,\\fscx108\\fscy108)\\t(90,170,\\fscx100\\fscy100)"
+        enter = o.get("in") or tpl.get("in")
+        if (pop and not o.get("in")) or (first and enter == "pop"):
+            anim = f"\\fscx{pct(.7)}\\fscy{pct(.7)}\\t(0,90,\\fscx{pct(1.08)}\\fscy{pct(1.08)})\\t(90,170,\\fscx{pct(1)}\\fscy{pct(1)})"
+        elif first and enter == "scale":
+            anim = f"\\fscx{pct(.4)}\\fscy{pct(.4)}\\t(0,200,0.6,\\fscx{pct(1)}\\fscy{pct(1)})"
         elif sc:
-            anim = f"\\fscx{sc * 100:.0f}\\fscy{sc * 100:.0f}"
+            anim = f"\\fscx{pct(sc)}\\fscy{pct(sc)}"
+        if first and enter in ("slide-up", "slide-down"):
+            d = em * 0.6 * (1 if enter == "slide-up" else -1)
+            tags = tags.replace(f"\\pos({cx:.1f},{cy:.1f})", f"\\move({cx:.1f},{cy + d:.1f},{cx:.1f},{cy:.1f},0,180)")
+            anim += "\\alpha&HFF&\\t(0,180,\\alpha&H00&)"
+        if first and enter == "fade":
+            anim += "\\fad(200,0)"
         if hide and st == "active":   # the word being revealed fades and rises in
             anim += "\\alpha&HFF&\\t(0,160,\\alpha&H00&)"
-        if first and tpl.get("fade"):
+        if first and tpl.get("fade") and not o.get("in"):
             anim += "\\fad(180,0)"
         glow = line2.get("glow", tpl.get("glow")) if styled else tpl.get("glow")
         if glow and not (hide and st == "active"):
@@ -357,21 +401,27 @@ def _page_events(placed, tpl, emph, active, s, e, first, block, W):
             sh_tags = tags.replace(f"\\pos({cx:.1f},{cy:.1f})", f"\\pos({cx:.1f},{cy + off:.1f})")
             out.append(f"Dialogue: 1,{_ts(s)},{_ts(e)},Cap,,0,0,0,,{{{sh_tags}\\1c&H000000&\\3c&H000000&\\1a&H90&\\3a&H90&"
                        f"\\bord{em * 0.06:.1f}\\blur{em * 0.22:.1f}\\shad0{anim}}}{_esc(w['text'])}")
-        bord = tpl.get("outline", 0) * em
-        oc = _colour(tpl.get("outline_color", "#000000"))[0]
+        bord = o.get("strokeW", tpl.get("outline", 0)) * em
+        oc = _colour(o.get("stroke") or tpl.get("outline_color", "#000000"))[0]
         shad = em * 0.06 if tpl.get("shadow") == "hard" else 0
+        sc4 = "&H000000&"
+        if o.get("shadow"):
+            sc4, shad = _colour(o["shadow"])[0], em * 0.07
         out.append(f"Dialogue: 2,{_ts(s)},{_ts(e)},Cap,,0,0,0,,{{{tags}\\1c{c1}\\1a{a1}\\3c{oc}\\bord{bord:.1f}"
-                   f"\\shad{shad:.1f}\\4c&H000000&\\4a&H00&{anim}}}{_esc(w['text'])}")
+                   f"\\shad{shad:.1f}\\4c{sc4}\\4a&H00&{anim}}}{_esc(w['text'])}")
+    if layer:
+        out = [re.sub(r"^Dialogue: (\d+),", lambda m: f"Dialogue: {int(m.group(1)) + layer},", ln) for ln in out]
     return out
 
 
 def render(video, cues, out_path, template=looks.DEFAULT, position="bottom", size="medium",
-           watermark=None, font=None, accent=None, progress=None, should_stop=None):
-    """Writes an MP4 with captions burned in. `progress(frac)` gets 0..1 updates."""
+           watermark=None, font=None, accent=None, progress=None, should_stop=None, ass=None):
+    """Writes an MP4 with captions burned in. `progress(frac)` gets 0..1 updates.
+    `ass`: a ready-made subtitle file (from assgen, for projects) instead of cues + template."""
     width, height, duration = probe(video)
     ass_path = os.path.splitext(out_path)[0] + ".ass"
     with open(ass_path, "w", encoding="utf-8") as f:
-        f.write(build_ass(cues, width, height, template, position, size, watermark, font, accent))
+        f.write(ass if ass is not None else build_ass(cues, width, height, template, position, size, watermark, font, accent))
     # Filter paths are relative to BASE: absolute Windows paths ("C:\...") break
     # ffmpeg's filter syntax, and forward slashes work on every OS.
     rel = lambda p: os.path.relpath(p, BASE).replace(os.sep, "/")

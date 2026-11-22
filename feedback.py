@@ -125,7 +125,10 @@ def _source_span(source, wrong):
             span = words[i:i + size]
             if not any(_DEVANAGARI.search(w) for w in span):
                 continue
-            score = SequenceMatcher(None, to_hinglish(" ".join(span)).lower(), wrong.lower()).ratio()
+            # Compare with the listed spelling (क्लेम -> claim) and the letter-by-letter one
+            # (klem): the misspelling the user fixed can come from either.
+            score = max(SequenceMatcher(None, to_hinglish(" ".join(span), lists).lower(), wrong.lower()).ratio()
+                        for lists in (True, False))
             if score > best_score:
                 best, best_score = " ".join(span), score
     return best
@@ -234,7 +237,7 @@ def enforce(uid, source, text, mode, _rules=None):
             continue
         tokens = text.split()
         size = len(r["right"].split())
-        targets = (r["wrong"].lower(), to_hinglish(r["source"]).lower())
+        targets = (r["wrong"].lower(), to_hinglish(r["source"]).lower(), to_hinglish(r["source"], False).lower())
         best, best_score = None, 0.5
         for n in {max(1, size - 1), size, size + 1}:
             for i in range(len(tokens) - n + 1):

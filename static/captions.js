@@ -123,7 +123,7 @@
 
   /** Draws one page of a caption into `root` (an absolutely positioned layer over the video).
    *  opts: {tpl, words (texts), active (index or null), em (px), position, newPage (bool: animate in)} */
-  function draw(root, {tpl, words, active, em, position = 'bottom', newPage = false, landscape = false}){
+  function draw(root, {tpl, words, active, em, position = 'bottom', newPage = false, landscape = false, x = null, y = null}){
     const hide = tpl.upcoming === 'hide';
     const visible = hide && active != null ? active + 1 : words.length;
     const lines = splitLines(words, tpl), styledTwo = tpl.split === 'half' && lines.length === 2;
@@ -202,6 +202,13 @@
     // Shrink to fit 84% of the frame, like the export.
     const max = root.clientWidth * .84, wd = block.scrollWidth;
     if (wd > max && wd > 0) block.style.fontSize = (em * max / wd) + 'px';
+    // Dragged somewhere in the editor: centred on (x, y), kept inside the frame (same as render.py).
+    if (x != null && y != null){
+      const W = root.clientWidth, H = root.clientHeight, bw = block.offsetWidth, bh = block.offsetHeight;
+      Object.assign(block.style, {translate: 'none', bottom: 'auto',
+        left: Math.min(Math.max(x * W - bw / 2, 0), Math.max(W - bw, 0)) + 'px',
+        top: Math.min(Math.max(y * H - bh / 2, 0), Math.max(H - bh, 0)) + 'px'});
+    }
     return block;
   }
 

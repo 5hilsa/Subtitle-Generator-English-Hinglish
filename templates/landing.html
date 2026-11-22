@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ app_name }}: captions that speak Hinglish</title>
-<meta name="description" content="Accurate Hinglish and Hindi captions for Reels and Shorts in under 2 minutes. Styled, burned in, and they get better every time you fix a word.">
+<meta name="description" content="Accurate Hinglish and Hindi captions for Reels, Shorts and YouTube videos in minutes. Styled, burned in, and they get better every time you fix a word.">
 <meta name="theme-color" content="#080808">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -273,6 +273,17 @@ h2 em{font-style:normal;color:var(--green)}
 .car-arrow:hover{background:rgb(245 245 242 / .1);border-color:rgb(245 245 242 / .3)}
 .car-arrow:active{transform:scale(.94)}
 @media (max-width:640px){.car-stage{height:min(118vw,480px)}.car-arrow{display:none}}
+.car-fmt{display:flex;justify-content:center;gap:.4rem;width:fit-content;margin:clamp(1.5rem,3vw,2.5rem) auto 0;padding:.3rem;border-radius:999px;border:1px solid var(--line);background:var(--s1)}
+.car-fmt button{display:inline-flex;align-items:center;gap:.55rem;padding:.6rem 1.1rem;border:0;border-radius:999px;background:transparent;color:var(--grey);font:600 .92rem/1 var(--font);cursor:pointer;transition:background .3s,color .3s}
+.car-fmt button small{font-size:.75rem;font-weight:500;opacity:.7}
+.car-fmt button:hover{color:var(--white)}
+.car-fmt button[aria-pressed=true]{background:var(--green);color:var(--black)}
+.car-fmt i{display:inline-block;border:1.8px solid currentColor;border-radius:3px}
+.car-fmt i.v{width:9px;height:15px}.car-fmt i.h{width:16px;height:10px}
+@media (max-width:520px){.car-fmt button small{display:none}}
+.carousel.wide .car-card{height:auto;width:min(78%,760px);aspect-ratio:16/9;top:50%;transform:translate(calc(-50% + var(--x) * 1%),-50%) scale(var(--s))}
+.carousel.wide .car-card .person{width:34%}
+.carousel.wide .car-stage{height:clamp(260px,34vw,470px)}
 @media (prefers-reduced-motion:reduce){.car-card{transition:none}}
 
 /* pricing */
@@ -357,7 +368,7 @@ footer{padding:4rem 0 2rem;overflow:hidden}
           <span class="ln" aria-hidden="true"><span style="--i:1">that speak</span></span>
           <span class="ln" aria-hidden="true"><span style="--i:2"><em>Hinglish.</em></span></span>
         </h1>
-        <p class="lead" data-reveal style="--d:.35s">Upload a Reel. Get accurate, styled captions in under 2 minutes. Fix a word once, and it's right on every video after that.</p>
+        <p class="lead" data-reveal style="--d:.35s">Upload a Reel, a Short or a full YouTube video. Get accurate, styled captions in minutes. Fix a word once, and it's right on every video after that.</p>
         <div id="start" data-reveal style="--d:.5s">
           {% if signed_in %}
           <div class="cta-row">
@@ -432,7 +443,7 @@ footer{padding:4rem 0 2rem;overflow:hidden}
             <div class="bar"><i></i></div>
             <span class="done">Done ✓</span>
           </div>
-          <div class="body"><span class="num">01</span><h3>Upload your Reel</h3><p>Hindi, Hinglish or English speech. Pick Hinglish, Hindi or English captions.</p></div>
+          <div class="body"><span class="num">01</span><h3>Upload your video</h3><p>Vertical or horizontal, Hindi, Hinglish or English speech. Pick Hinglish, Hindi or English captions.</p></div>
         </article>
         <article class="step" data-reveal style="--d:.12s">
           <div class="viz" aria-hidden="true">
@@ -487,9 +498,13 @@ footer{padding:4rem 0 2rem;overflow:hidden}
       <div class="sec-head">
         <div>
           <span class="label" data-reveal>Caption templates</span>
-          <h2 class="lines" data-reveal-lines><span class="ln"><span style="--i:0">Made for</span></span><span class="ln"><span style="--i:1"><em>vertical video.</em></span></span></h2>
+          <h2 class="lines" data-reveal-lines><span class="ln"><span style="--i:0">Made for every</span></span><span class="ln"><span style="--i:1"><em>format.</em></span></span></h2>
         </div>
-        <p data-reveal style="--d:.2s">Premium looks tuned for Reels and Shorts, word-by-word. Change the colour or the font, move it up or down, and what you see is what you export.</p>
+        <p data-reveal style="--d:.2s">Premium looks for vertical Reels and Shorts and for horizontal YouTube videos, word by word. Change the colour or the font, move it up or down, and what you see is what you export.</p>
+      </div>
+      <div class="car-fmt" role="group" aria-label="Video format" data-reveal style="--d:.1s">
+        <button type="button" data-fmt="v" aria-pressed="true"><i class="v"></i>Vertical<small>Reels · Shorts</small></button>
+        <button type="button" data-fmt="h" aria-pressed="false"><i class="h"></i>Horizontal<small>YouTube</small></button>
       </div>
       <div class="carousel" id="carousel" role="region" aria-roledescription="carousel" aria-label="Caption templates" tabindex="0" data-reveal style="--d:.15s">
         <div class="car-stage" id="carStage"></div>
@@ -554,7 +569,7 @@ footer{padding:4rem 0 2rem;overflow:hidden}
     <div class="wrap">
       <div class="final" data-reveal>
         <h2>Post today.</h2>
-        <p>Your first 10 minutes are free. Captions in under 2 minutes, styled and ready for Reels.</p>
+        <p>Your first 10 minutes are free. Captions in minutes, styled and ready for Reels, Shorts and YouTube.</p>
         {% if signed_in %}<a class="btn btn-primary" href="/app">Open the app <span class="arr">→</span></a>
         {% else %}<a class="btn btn-primary" href="#start" data-start>Start free <span class="arr">→</span></a>{% endif %}
       </div>
@@ -893,11 +908,18 @@ function drawCards(){
     lastDraw.set(key, st.key);
     const layer = card.querySelector('.capl');
     CaptionLook.draw(layer, {tpl, words: st.page, active: st.active, newPage: active && prev.split(':')[0] !== st.key.split(':')[0],
-                             em: CaptionLook.emFor(layer.clientWidth, layer.clientHeight, tpl) * 1.2});
+                             em: CaptionLook.emFor(layer.clientWidth, layer.clientHeight, tpl) * 1.2,
+                             landscape: layer.clientWidth > layer.clientHeight});
   });
 }
 drawCards();
 setInterval(drawCards, 80);
+// Vertical or horizontal: the same templates on a Reel-shaped or a YouTube-shaped frame.
+document.querySelectorAll('.car-fmt button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.car-fmt button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+  $('carousel').classList.toggle('wide', b.dataset.fmt === 'h');
+  lastDraw.clear(); place(); slideStart = performance.now(); holdAuto();
+}));
 
 // ---------- faq ----------
 document.querySelectorAll('.qa button').forEach(b => b.addEventListener('click', () => {

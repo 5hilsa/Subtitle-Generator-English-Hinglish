@@ -7,8 +7,12 @@ Picks a backend at start-up:
 
 Override with SUBGEN_BACKEND=mlx|faster-whisper and SUBGEN_DEVICE=cuda|cpu.
 Both backends use the same Whisper weights, so accuracy matches across machines.
+
+With GROQ_API_KEY set, speech-to-text runs on Groq's servers instead (free plan,
+same Whisper turbo model, a few seconds per video, almost no load on this computer).
+The local engine stays as the fallback. SUBGEN_STT=local keeps it all on this computer.
 """
-import os, platform, re, subprocess, sys, types
+import os, platform, re, subprocess, sys, time, types
 
 import numpy as np
 import imageio_ffmpeg
@@ -166,12 +170,103 @@ else:
         return {"segments": out, "language": info.language}
 
 
+# ---------------------------------------------------------------- Groq (cloud, free plan)
+GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
+CLOUD = bool(GROQ_KEY) and os.environ.get("SUBGEN_STT") != "local"
+GROQ_URL = "https://api.groq.com/openai/v1/audio/"
+GROQ_PIECE = float(os.environ.get("SUBGEN_GROQ_PIECE", 30))   # seconds of audio per request
+if CLOUD:
+    LOCAL_DEVICE, DEVICE = DEVICE, "Groq cloud (Whisper large-v3-turbo)"
+
+
+def _opus(audio):
+    """16 kHz mono float audio -> small Ogg/Opus file (speech stays clear at 32 kbps)."""
+    pcm = (np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes()
+    run = subprocess.run([FFMPEG, "-nostdin", "-f", "s16le", "-ar", str(SAMPLE_RATE), "-ac", "1", "-i", "-",
+                          "-c:a", "libopus", "-b:a", "32k", "-application", "voip", "-f", "ogg", "-"],
+                         input=pcm, capture_output=True,
+                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if run.returncode != 0:
+        raise RuntimeError("Could not compress the audio for upload")
+    return run.stdout
+
+
+def _pieces(audio, target):
+    """Cut points about `target` seconds apart, each at the quietest moment of the last
+    few seconds before it, so no word is cut in half."""
+    frame = SAMPLE_RATE // 50                                          # 20 ms
+    n = len(audio) // frame
+    rms = np.sqrt((audio[:n * frame].reshape(n, frame) ** 2).mean(axis=1))
+    rms = np.convolve(rms, np.ones(15) / 15, mode="same")              # ~300 ms smoothing
+    cuts, lo = [], 0
+    while (len(audio) - lo) / SAMPLE_RATE > target * 1.3:
+        a, b = (lo // frame) + int((target - 8) * 50), (lo // frame) + int(target * 50)
+        cut = (a + int(np.argmin(rms[a:b]))) * frame
+        cuts.append((lo, cut))
+        lo = cut
+    cuts.append((lo, len(audio)))
+    return cuts
+
+
+def _groq_piece(audio, lo, hi, language, translate):
+    import requests
+    data = [("model", "whisper-large-v3" if translate else "whisper-large-v3-turbo"),
+            ("response_format", "verbose_json"), ("temperature", "0"),
+            ("timestamp_granularities[]", "segment"), ("timestamp_granularities[]", "word")]
+    if language and not translate:
+        data.append(("language", language))
+    clip = _opus(audio[lo:hi])
+    for attempt in range(4):
+        r = requests.post(GROQ_URL + ("translations" if translate else "transcriptions"),
+                          headers={"Authorization": f"Bearer {GROQ_KEY}"}, data=data,
+                          files={"file": ("audio.ogg", clip, "audio/ogg")}, timeout=120)
+        if r.status_code == 429 and attempt < 3:                # free-plan rate limit: wait as told
+            time.sleep(min(float(r.headers.get("retry-after", 5)), 30))
+            continue
+        r.raise_for_status()
+        break
+    body, offset = r.json(), lo / SAMPLE_RATE
+    segs = [{"start": s["start"] + offset, "end": s["end"] + offset, "text": s["text"], "words": []}
+            for s in body.get("segments") or []]
+    for w in body.get("words") or []:   # each word goes to the last segment starting before it
+        w = {"word": w["word"], "start": w["start"] + offset, "end": w["end"] + offset}
+        owner = next((g for g in reversed(segs) if g["start"] <= w["start"] + 0.01), segs[0] if segs else None)
+        if owner:
+            owner["words"].append(w)
+    return segs
+
+
+def _groq(audio, language, task):
+    # Whisper on long audio carries each window's text into the next and can drift into
+    # skipping speech; short independent pieces avoid that and run in parallel.
+    from concurrent.futures import ThreadPoolExecutor
+    pieces = _pieces(audio, GROQ_PIECE)
+    done, out = 0, [None] * len(pieces)
+    _report(0.02)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {pool.submit(_groq_piece, audio, lo, hi, language, task == "translate"): i
+                   for i, (lo, hi) in enumerate(pieces)}
+        from concurrent.futures import as_completed
+        for f in as_completed(futures):
+            out[futures[f]] = f.result()
+            done += 1
+            _report(done / len(pieces))
+    return {"segments": [s for part in out for s in part], "language": language}
+
+
 def transcribe(audio, language=None, task="transcribe", progress=None):
     """Returns {"segments": [{start, end, text, words: [{word, start, end}]}], "language"}.
     `progress(frac)` is called as decoding advances and may raise Cancelled to stop."""
     model = TRANSLATE_MODEL if task == "translate" else TRANSCRIBE_MODEL
     _hook["progress"] = progress
     try:
+        if CLOUD:
+            try:
+                return _groq(audio, language, task)
+            except Cancelled:
+                raise
+            except Exception as e:                               # offline, limit used up…: do it here
+                print(f"Groq speech-to-text failed ({e}); using this computer instead")
         return _run(audio, model, language, task)
     finally:
         _hook["progress"] = None
@@ -179,4 +274,6 @@ def transcribe(audio, language=None, task="transcribe", progress=None):
 
 def warm_up():
     """Load the main model (and compile GPU kernels) before the first upload."""
+    if CLOUD:
+        return                  # loaded only if the cloud ever fails, to keep memory free
     transcribe(np.zeros(SAMPLE_RATE, dtype=np.float32), language="hi")
